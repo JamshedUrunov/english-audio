@@ -1,0 +1,1628 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Английский по аудио</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Английский">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#4a4a4a">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #4a4a4a;
+  --panel: #404040;
+  --ink: #e3e3e3;
+  --muted: #c8c8c8;
+  --line: #5e5e5e;
+  --hover: #575757;
+  --accent: #a9c4f5;
+  --on-accent: #10192b;
+  --current: #3c3c38;
+  --word-on: #262626;
+  --known: #e3e3e3;
+  --medium: #f2bd63;
+  --unknown: #ffa89b;
+  --known-bg: #5f5f5f;
+  --medium-bg: #5c4a24;
+  --unknown-bg: #633a35;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+button, select, input { font: inherit; color: inherit; }
+
+button {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+}
+button:hover { background: var(--hover); }
+button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Шапка */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 8px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.top h1 { margin: 0; font-size: 15px; font-weight: 600; }
+.book-select {
+  min-width: 0;
+  max-width: 60%;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  font-weight: 600;
+}
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.warning { color: var(--unknown); font-size: 12px; }
+.text-size { display: inline-flex; align-items: center; gap: 2px; }
+.text-size output { min-width: 44px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+/* Раскладка */
+.layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+}
+
+/* Текст */
+.reader { position: relative; min-height: 0; overflow: hidden; }
+.text {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px clamp(16px, 5vw, 64px) 40vh;
+  font: calc(20px * var(--text-scale, 1))/1.75 Charter, "Bitstream Charter", Georgia, Cambria, serif;
+}
+.text p {
+  max-width: 44em;
+  margin: 0 auto 1em;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 10em;
+}
+.sent {
+  padding: 3px 0;
+  border-radius: 4px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: pointer;
+}
+.sent.cur { background: var(--current); }
+.w { border-radius: 3px; cursor: pointer; }
+.w:hover { background: var(--hover); }
+.w.on { background: var(--word-on); }
+.w.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Статусы слов */
+.w.st-1 { color: var(--known); }
+.w.st-2 { color: var(--medium); }
+.w.st-3 { color: var(--unknown); }
+
+.follow {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+}
+.follow:hover { background: var(--accent); filter: brightness(1.1); }
+
+/* Панель слов */
+.words {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+}
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 2px;
+  line-height: 1.2;
+}
+.stat b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11px; color: var(--muted); }
+.stat.st-1 b { color: var(--known); }
+.stat.st-2 b { color: var(--medium); }
+.stat.st-3 b { color: var(--unknown); }
+
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 8px; }
+.chips-label { margin-right: 2px; font-size: 12px; color: var(--muted); }
+.chips button { padding: 3px 8px; font-size: 12px; border-radius: 999px; }
+.chips .st-1 { color: var(--known); }
+.chips .st-2 { color: var(--medium); }
+.chips .st-3 { color: var(--unknown); }
+.chips button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+
+.progress {
+  display: flex;
+  height: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--line);
+}
+.progress i { display: block; height: 100%; }
+.p1 { background: var(--known); }
+.p2 { background: var(--medium); }
+.p3 { background: var(--unknown); }
+.coverage { margin: 6px 0 10px; font-size: 12px; color: var(--muted); }
+
+.list-tools { display: flex; gap: 6px; margin-bottom: 6px; }
+.list-tools input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.list-tools select {
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.list-tools.second { align-items: center; justify-content: space-between; font-size: 12px; }
+.list-tools.second button { padding: 3px 8px; font-size: 12px; white-space: nowrap; }
+.check { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+.list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border-bottom: 1px solid var(--line);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 36px;
+}
+.row.sel { background: var(--hover); }
+.row-word {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+.row-word small { margin-left: 4px; font-size: 11px; color: var(--muted); }
+.row.st-1 .row-word { color: var(--known); }
+.row.st-2 .row-word { color: var(--medium); }
+.row.st-3 .row-word { color: var(--unknown); }
+
+.dots { display: flex; gap: 3px; }
+.dots button { width: 26px; height: 26px; padding: 0; font-size: 11px; font-weight: 600; color: var(--muted); }
+.dots button.st-1:hover, .dots button.st-1.is { background: var(--known-bg); border-color: var(--known); color: var(--known); }
+.dots button.st-2:hover, .dots button.st-2.is { background: var(--medium-bg); border-color: var(--medium); color: var(--medium); }
+.dots button.st-3:hover, .dots button.st-3.is { background: var(--unknown-bg); border-color: var(--unknown); color: var(--unknown); }
+
+.empty { color: var(--muted); text-align: center; }
+
+/* Всплывающее окно слова */
+.pop {
+  position: fixed;
+  z-index: 10;
+  width: 280px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .22);
+}
+.pop-head { margin-bottom: 8px; color: var(--muted); font-size: 12px; }
+.pop-head b { color: var(--ink); font-size: 18px; }
+#popForms { margin-top: 2px; }
+.pop-translation { margin: 0 0 10px; font-size: 16px; line-height: 1.3; color: var(--ink); }
+.status-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.status-buttons button { padding: 6px 2px; font-size: 12px; font-weight: 600; }
+.status-buttons kbd { font: inherit; font-weight: 400; opacity: .6; }
+.status-buttons .st-1 { color: var(--known); }
+.status-buttons .st-2 { color: var(--medium); }
+.status-buttons .st-3 { color: var(--unknown); }
+.status-buttons .st-1.is { background: var(--known-bg); border-color: var(--known); }
+.status-buttons .st-2.is { background: var(--medium-bg); border-color: var(--medium); }
+.status-buttons .st-3.is { background: var(--unknown-bg); border-color: var(--unknown); }
+.pop-play { width: 100%; margin-top: 6px; }
+
+/* Плеер */
+.player {
+  padding-block: 8px 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+.seek { display: flex; align-items: center; gap: 10px; }
+.seek input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.time { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
+.controls {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.group { display: flex; align-items: center; gap: 6px; }
+.group.end { justify-content: flex-end; flex-wrap: wrap; }
+.position { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.main button { min-width: 42px; height: 38px; }
+.main .play {
+  width: 52px;
+  height: 44px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-size: 18px;
+}
+.main .play:hover { background: var(--accent); filter: brightness(1.1); }
+.speed { display: inline-flex; align-items: center; gap: 2px; }
+.speed button { width: 28px; padding: 6px 0; }
+.speed output { min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* Сенсорный экран: кнопки крупнее */
+@media (pointer: coarse) {
+  .dots button { width: 38px; height: 38px; font-size: 14px; }
+  .chips button { padding: 7px 12px; font-size: 13px; }
+  .status-buttons button { padding: 10px 2px; }
+  .pop-play { padding: 10px; }
+  .speed button { width: 38px; padding: 8px 0; }
+  .text-size button { min-width: 42px; min-height: 38px; }
+}
+
+/* Выбор файлов книги на iPad */
+.library {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--bg);
+}
+.library-card { display: grid; gap: 12px; width: min(520px, 100%); }
+.library-card h2 { margin: 0; font-size: 22px; text-wrap: balance; }
+.library-card p { margin: 0; color: var(--muted); }
+.library-card progress { width: 100%; height: 8px; accent-color: var(--accent); }
+.library-card ol { display: grid; gap: 6px; margin: 0; padding-left: 20px; }
+.library-files { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.library-files .ok { color: var(--known); }
+.library-pick { justify-self: start; padding: 12px 18px; background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.library-pick:hover { background: var(--accent); filter: brightness(1.1); }
+.library-error { color: var(--unknown); }
+
+@media (max-width: 1100px) {
+  .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; }
+  .position { display: none; }
+  .group.end { justify-content: center; }
+}
+
+@media (max-width: 820px) {
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .words { border-left: 0; border-top: 1px solid var(--line); }
+  .text { font-size: calc(18px * var(--text-scale, 1)); }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 id="title"></h1>
+  <select id="bookSelect" class="book-select" aria-label="Книга" hidden></select>
+  <div class="top-actions">
+    <span id="saveWarning" class="warning" hidden></span>
+    <span class="text-size" role="group" aria-label="Размер текста">
+      <button id="smallerTextBtn" type="button" title="Уменьшить текст (-)" aria-label="Уменьшить текст">A−</button>
+      <output id="textSize">100%</output>
+      <button id="largerTextBtn" type="button" title="Увеличить текст (+)" aria-label="Увеличить текст">A+</button>
+    </span>
+    <button id="addBookBtn" type="button" hidden>Добавить книгу</button>
+    <button id="exportBtn" type="button" title="Сохранить статусы слов в файл">Экспорт</button>
+    <button id="importBtn" type="button" title="Загрузить статусы слов из файла">Импорт</button>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="reader" aria-label="Текст">
+    <div id="text" class="text"></div>
+    <button id="followBtn" class="follow" type="button" hidden>↓ К текущему предложению</button>
+  </section>
+
+  <aside class="words" aria-label="Слова">
+    <div class="stats" id="stats" role="group" aria-label="Статистика">
+      <div class="stat"><b id="nAll"></b><span>Всего</span></div>
+      <div class="stat st-3"><b id="n3"></b><span>Не знаю</span></div>
+      <div class="stat st-2"><b id="n2"></b><span>Средне</span></div>
+      <div class="stat st-1"><b id="n1"></b><span>Знаю</span></div>
+    </div>
+    <div class="progress" aria-hidden="true">
+      <i id="bar1" class="p1"></i><i id="bar2" class="p2"></i><i id="bar3" class="p3"></i>
+    </div>
+    <p id="coverage" class="coverage"></p>
+
+    <div class="chips" id="filters" role="group" aria-label="Какие статусы показать">
+      <span class="chips-label">Показать:</span>
+      <button type="button" data-filter="all">Все</button>
+      <button type="button" class="st-3" data-filter="3">Не знаю</button>
+      <button type="button" class="st-2" data-filter="2">Средне</button>
+      <button type="button" class="st-1" data-filter="1">Знаю</button>
+    </div>
+
+    <div class="list-tools">
+      <input id="search" type="search" placeholder="Поиск слова" aria-label="Поиск слова" autocomplete="off">
+      <select id="sort" aria-label="Сортировка">
+        <option value="freq">Частые</option>
+        <option value="alpha">А–Я</option>
+        <option value="first">По тексту</option>
+      </select>
+    </div>
+    <div class="list-tools second">
+      <label class="check"><input id="onlySentence" type="checkbox"> Только текущее предложение</label>
+      <button id="markRest" type="button" title="Отметить «Знаю» слова текущего предложения, которые вы ещё не отмечали">Остальные → Знаю</button>
+    </div>
+    <ul id="list" class="list"></ul>
+    <p id="empty" class="empty" hidden>Нет слов для этого фильтра</p>
+  </aside>
+</main>
+
+<footer class="player" aria-label="Плеер">
+  <div class="seek">
+    <span id="timeNow" class="time">0:00</span>
+    <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Позиция">
+    <span id="timeAll" class="time">0:00</span>
+  </div>
+  <div class="controls">
+    <div class="group">
+      <span id="position" class="position"></span>
+    </div>
+    <div class="group main">
+      <button id="prevBtn" type="button" title="Предыдущее предложение (←)" aria-label="Предыдущее предложение">⏮</button>
+      <button id="back5Btn" type="button" title="Назад 5 секунд (Shift+←)">−5с</button>
+      <button id="playBtn" class="play" type="button" title="Пауза / воспроизведение (Пробел)" aria-label="Воспроизведение">▶</button>
+      <button id="fwd5Btn" type="button" title="Вперёд 5 секунд (Shift+→)">+5с</button>
+      <button id="nextBtn" type="button" title="Следующее предложение (→)" aria-label="Следующее предложение">⏭</button>
+    </div>
+    <div class="group end">
+      <button id="repeatBtn" type="button" title="Прослушать предложение с начала (R)">↺ Сначала</button>
+      <button id="loopBtn" type="button" aria-pressed="false" title="Повторять предложение по кругу (L)">Повтор</button>
+      <button id="stopBtn" type="button" aria-pressed="false" title="Пауза после каждого предложения (P)">Стоп после фразы</button>
+      <span class="speed">
+        <button id="slowerBtn" type="button" title="Медленнее ([)" aria-label="Медленнее">−</button>
+        <output id="speed">1.0×</output>
+        <button id="fasterBtn" type="button" title="Быстрее (])" aria-label="Быстрее">+</button>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<div id="pop" class="pop" role="dialog" aria-label="Статус слова" hidden>
+  <div class="pop-head"><b id="popWord"></b> <span id="popCount"></span><div id="popForms"></div></div>
+  <p id="popTranslation" class="pop-translation"></p>
+  <div class="status-buttons">
+    <button type="button" class="st-3" data-set="3">Не знаю <kbd>3</kbd></button>
+    <button type="button" class="st-2" data-set="2">Средне <kbd>2</kbd></button>
+    <button type="button" class="st-1" data-set="1">Знаю <kbd>1</kbd></button>
+  </div>
+  <button id="popPlay" class="pop-play" type="button">▶ Слушать отсюда</button>
+</div>
+
+<audio id="audio" preload="auto"></audio>
+<script>
+// Русские переводы слов (ключ — начальная форма). Новые книги дополняют этот словарь.
+window.DICTIONARY = {"20s":"двадцатые годы; возраст 20-30 лет","40s":"сороковые (возраст за сорок), около 40 лет","60-second":"шестидесятисекундный","a":"неопределённый артикль","abandon":"бросать, отказываться","abandonment":"брошенность, оставление","ability":"способность, умение","able":"способный, в состоянии","about":"о, про; около","absence":"отсутствие","absolutely":"абсолютно, совершенно","absorb":"поглощать, впитывать","absorption":"поглощение, усвоение","accelerate":"ускорять","acceleration":"ускорение","accept":"принимать","access":"доступ; получать доступ","accomplish":"совершать, достигать","accordance":"соответствие (in accordance with)","according":"согласно (according to)","account":"учитывать; счёт; отчёт","accountability":"ответственность, подотчётность","accumulate":"накапливать","accurate":"точный","accusation":"обвинение","achievable":"достижимый","achieve":"достигать","achievement":"достижение","achiever":"целеустремлённый человек, добивающийся успеха","acid":"кислота","acknowledge":"признавать, осознавать","acquire":"приобретать, усваивать","across":"через, поперёк","act":"действовать; действие","action":"действие, поступок","activate":"активировать, запускать","activation":"активация, возбуждение","active":"активный","activist":"активист","activity":"деятельность, активность","actor":"актёр","actual":"фактический, реальный","actually":"на самом деле, фактически","adapt":"адаптироваться","adaptable":"адаптивный, гибкий","adaptation":"адаптация, приспособление","add":"добавлять","additional":"дополнительный","address":"обращаться к, решать (проблему); адрес","adequate":"адекватный, достаточный","adjustment":"корректировка, приспособление","admit":"признавать","adopt":"принимать, перенимать","adrenaline":"адреналин","adult":"взрослый","advance":"продвигаться; продвинутый; прогресс","advancement":"продвижение, прогресс","advantage":"преимущество","adversity":"невзгоды, трудности","advice":"совет","affect":"влиять, воздействовать","affirm":"утверждать, подтверждать","afford":"позволять себе","afraid":"испуганный, боящийся","after":"после, после того как","again":"снова, опять","against":"против","age":"возраст; стареть","aggression":"агрессия","aggressive":"агрессивный","aggressively":"агрессивно","agility":"ловкость, гибкость","agitate":"волновать, возбуждать","air":"воздух","alarm":"тревога, сигнал тревоги","alchemy":"алхимия, превращение","alcohol":"алкоголь","alert":"бдительный; тревога, оповещение","align":"согласовывать, выравнивать","alignment":"согласованность, выравнивание","alive":"живой","all":"все, весь","allow":"позволять, разрешать","almond":"миндаль (миндалина мозга)","alone":"один, в одиночку","already":"уже","also":"также, тоже","alternative":"альтернатива; альтернативный","always":"всегда","ambiguity":"неоднозначность, неопределённость","ambitious":"амбициозный","amount":"количество, объём","amplify":"усиливать","amygdala":"миндалевидное тело, амигдала","an":"неопределённый артикль","analysis":"анализ","ancestor":"предок","ancient":"древний","and":"и, а","anger":"гнев, злость","angle":"угол, ракурс","angry":"злой, сердитый","annual":"ежегодный","another":"другой, ещё один","anterior":"передний","anticipate":"предвидеть, ожидать","antifragile":"антихрупкий","anxiety":"тревога, тревожность","anxious":"тревожный, встревоженный","any":"любой, какой-либо","anymore":"больше не, уже не","anyone":"кто-либо, любой","anything":"что-нибудь, всё что угодно","anyway":"в любом случае, всё равно","apart":"врозь, отдельно","appear":"появляться, казаться","application":"применение, приложение","apply":"применять, обращаться","approach":"подход; приближаться, подходить к","appropriate":"подходящий, уместный","approve":"одобрять","architecture":"архитектура, строение","area":"область, зона","aren't":"не являются (are not)","argument":"спор, довод","arise":"возникать, появляться","around":"вокруг, около","arrogance":"высокомерие","arrogant":"высокомерный","art":"искусство","as":"как, в качестве; так как","ask":"спрашивать, просить","aspect":"аспект, сторона","assessment":"оценка","associate":"ассоциировать, связывать","assume":"предполагать, допускать","assumption":"предположение, допущение","at":"в, на, у","athlete":"спортсмен","attack":"нападать; атака, приступ","attention":"внимание","attitude":"отношение, установка","audience":"аудитория, публика","audio":"аудио","audit":"аудит, проверка","authentic":"подлинный, настоящий","authentically":"подлинно, искренне","authenticity":"подлинность, искренность","author":"автор","authority":"авторитет, власть","automatic":"автоматический","automatically":"автоматически","available":"доступный, имеющийся","avoid":"избегать","aware":"осознающий, осведомлённый","awareness":"осознанность, осведомлённость","away":"прочь, вдали","awkward":"неловкий","awkwardness":"неловкость","back":"назад; спина; поддерживать","background":"фон, подоплёка, прошлое","backwards":"назад, в обратном порядке","bad":"плохой","balance":"баланс; уравновешивать","bank":"банк; запас","base":"основывать; основа","baseline":"базовый уровень, исходный уровень","basic":"базовый, основной","basis":"основа, базис","battlefield":"поле боя","be":"быть, являться","beat":"бить, побеждать; удар","because":"потому что","become":"становиться, делаться","bed":"кровать","bedroom":"спальня","before":"до, перед, прежде","begin":"начинать, начинаться","behavior":"поведение","behind":"позади, за","belief":"убеждение, вера","believe":"верить, полагать","beneath":"под, ниже","benefit":"польза; приносить пользу","best":"лучший, наилучший","better":"лучше, лучший","between":"между","beyond":"за пределами, сверх","bias":"предвзятость, искажение","big":"большой","billiondoll":"миллиардный (billion-dollar)","biochemical":"биохимический","biological":"биологический","bit":"немного; кусочек","bitterness":"горечь, озлобленность","black":"чёрный","blame":"винить; вина","block":"блокировать; блок","blood":"кровь","boardroom":"зал заседаний","bodily":"телесный, физический","body":"тело","bombard":"бомбардировать, засыпать","book":"книга","bore":"наскучить; скука","born":"рождённый","boss":"начальник, босс","both":"оба, и то и другое","bother":"беспокоить, донимать","boundary":"граница, личные границы","box":"коробка, ящик","brain":"мозг","brand":"бренд, марка","break":"ломать, прерывать; перерыв","breakthrough":"прорыв","breath":"вдох, дыхание","breathe":"дышать","brilliant":"блестящий, гениальный","bring":"приносить, приводить","brutal":"жестокий, суровый","build":"строить, развивать; создавать","burn":"жечь, сжигать","business":"бизнес, дело","busy":"занятой","but":"но, однако","button":"кнопка","by":"посредством, у, к, от","c-orker":"искажённое co-worker (коллега)","caffeine":"кофеин","call":"называть, звать; звонок","calm":"спокойный, успокаивать; спокойствие","calmly":"спокойно","can":"мочь, уметь; банка","can't":"не могу (cannot)","cannot":"не может (can not)","capability":"способность, возможность","capable":"способный","capacity":"способность, ёмкость","car":"машина, автомобиль","cardiovascular":"сердечно-сосудистый","care":"заботиться; забота","career":"карьера","carefully":"осторожно, внимательно","cascade":"каскад","catastrophe":"катастрофа","catastrophize":"катастрофизировать, ожидать худшего","catch":"ловить, замечать","category":"категория","cause":"вызывать; причина","celebrate":"праздновать, отмечать","cell":"клетка","cellular":"клеточный","center":"центр; сосредоточивать","certain":"определённый, уверенный","certainly":"конечно, определённо","certainty":"уверенность, определённость","challenge":"вызов, испытание; бросать вызов","champion":"чемпион","chance":"шанс, случай","change":"изменять, менять; изменение","channel":"направлять; канал","chaos":"хаос","chaotic":"хаотичный","chapter":"глава","character":"характер, персонаж","characterize":"характеризовать","charge":"заряд; заряжать","chemical":"химическое вещество; химический","chemistry":"химия","child":"ребёнок","childhood":"детство","choice":"выбор","choose":"выбирать","chronic":"хронический","chronically":"хронически","circuitry":"нейронные цепи, схемы","circumstance":"обстоятельство","clarification":"уточнение, прояснение","clarify":"прояснять, уточнять","clarity":"ясность","clear":"ясный, чистый; очищать","clearly":"ясно, чётко","close":"близкий; закрывать","cloud":"облако; затуманивать","clue":"подсказка, ключ","cognitive":"когнитивный, познавательный","cold":"холодный; простуда","collaborative":"совместный","colleague":"коллега","combat":"бороться; борьба","combine":"объединять, сочетать","come":"приходить, наступать","comfort":"комфорт, утешение","comfortable":"комфортный, удобный","comment":"комментарий, замечание","commit":"обязываться, посвящать себя; совершать","commitment":"обязательство, приверженность","commonly":"обычно, как правило","communicate":"общаться, передавать","communication":"общение, коммуникация","community":"сообщество","company":"компания; общество","compare":"сравнивать","compassionate":"сострадательный","compatibility":"совместимость","compel":"принуждать, вынуждать","compete":"соревноваться, конкурировать","competence":"компетентность","competency":"компетентность, компетенция","competition":"соревнование, конкуренция","competitive":"конкурентный, соревновательный","complacency":"самодовольство, благодушие","complain":"жаловаться","complete":"полный; завершать","completely":"полностью, совершенно","complex":"сложный; комплекс","complexity":"сложность","complicate":"усложнять","component":"компонент, составляющая","composure":"самообладание, хладнокровие","compound":"накапливаться, усугублять; соединение","compromise":"компромисс; ставить под угрозу","computer":"компьютер","concentrate":"концентрироваться","concept":"концепция, понятие","concern":"беспокоить; беспокойство, забота","conclusion":"вывод, заключение","concrete":"конкретный; бетон","condition":"условие, состояние; приучать","confidence":"уверенность","confidencebuilding":"укрепляющий уверенность (confidence-building)","confident":"уверенный","conflict":"конфликт","confrontation":"конфронтация, столкновение","connect":"соединять, связывать","connection":"связь, соединение","conscious":"осознанный, сознательный","consciously":"осознанно, сознательно","consequence":"последствие","consider":"рассматривать, считать","consideration":"соображение, учёт","consistency":"последовательность, постоянство","consistent":"последовательный, постоянный","consistently":"последовательно, неизменно","consolidate":"закреплять, консолидировать","constant":"постоянный","constantly":"постоянно","constrain":"ограничивать, сдерживать","constructive":"конструктивный","constructively":"конструктивно","consume":"потреблять, поглощать","contact":"контакт; связываться","contagion":"заражение, эмоциональное «заражение»","contagious":"заразительный","contain":"содержать, сдерживать","content":"содержание; довольный","contingency":"непредвиденный случай; зависимость","continue":"продолжать","continuous":"непрерывный","continuously":"непрерывно","contradict":"противоречить","contribute":"способствовать, вносить вклад","contribution":"вклад","control":"контролировать, управлять; контроль","controllable":"контролируемый","conventional":"общепринятый, традиционный","conversation":"разговор, беседа","conversely":"наоборот","cool":"прохладный; крутой","cooperation":"сотрудничество","coordination":"координация","cope":"справляться","core":"ядро, суть; основной","correction":"исправление, коррекция","cortex":"кора (головного мозга)","cortisol":"кортизол (гормон стресса)","cost":"стоить; цена, затраты","costly":"дорогостоящий","could":"мог бы, мог","couldn't":"не мог (could not)","count":"считать, иметь значение","counteract":"противодействовать","counterattack":"контратака","counterintuitive":"противоречащий интуиции","counterproductive":"контрпродуктивный, вредный для дела","courage":"мужество, смелость","courageously":"мужественно, смело","course":"курс; ход; конечно (of course)","cover":"покрывать, охватывать","crack":"трещина; ломаться, трескаться","crash":"крах, сбой; разбиваться","create":"создавать, порождать","creation":"создание, творение","creative":"творческий","creature":"существо","crisis":"кризис","critical":"критический, критичный","criticism":"критика","criticize":"критиковать","cross":"пересекать; крест","crucial":"решающий, критически важный","crumble":"крошиться, рушиться","cube":"куб","cue":"сигнал, подсказка","culture":"культура","curiosity":"любопытство","curious":"любопытный","current":"текущий, нынешний","currently":"в настоящее время","cycle":"цикл, круг","daily":"ежедневный, ежедневно","damage":"вред, повреждение; повреждать","dance":"танец; танцевать","danger":"опасность","dangerous":"опасный","dark":"тёмный","day":"день","dead":"мёртвый","deal":"иметь дело, справляться; сделка","death":"смерть","decade":"десятилетие","decide":"решать, принимать решение","decision":"решение","decision-m":"обрывок decision-making (принятие решений)","decision-making":"принятие решений","decisionmaking":"принятие решений","decisive":"решительный, решающий","decline":"снижаться; отказываться; упадок","decode":"расшифровывать","decompress":"снимать напряжение, разжимать","decrease":"уменьшать, снижать","dedicate":"посвящать","deenergizes":"лишает энергии (de-energizes)","deep":"глубокий","deeply":"глубоко","deescalate":"снижать напряжение, деэскалировать","default":"по умолчанию; автоматический режим","defect":"дефект, недостаток","defend":"защищать","defensive":"оборонительный, защитный","defensiveness":"защитная реакция, оборонительность","definition":"определение","dehydration":"обезвоживание","delay":"задержка; откладывать","deliberately":"намеренно, осознанно","delusion":"заблуждение, иллюзия","demand":"требование; требовать","demonstrate":"демонстрировать, показывать","density":"плотность","depend":"зависеть","dependent":"зависимый","deplete":"истощать","deploy":"задействовать, развёртывать","deposit":"вклад, откладывать; залежь","deprivation":"лишение, депривация","derive":"получать, извлекать","describe":"описывать","design":"проектировать; замысел, дизайн","despair":"отчаяние","despite":"несмотря на","destiny":"судьба","destroy":"разрушать, уничтожать","destructive":"разрушительный","detach":"отделять(ся), отстраняться","detail":"деталь, подробность","detection":"обнаружение","determination":"решимость, целеустремлённость","determine":"определять, решать","devastate":"разрушать, опустошать","develop":"развивать, развиваться","development":"развитие, разработка","diagnostic":"диагностический","didn't":"не (did not)","differ":"отличаться","difference":"разница, различие","different":"разный, другой","differently":"по-другому, иначе","difficult":"трудный, сложный","difficulty":"трудность","dignity":"достоинство","dimension":"измерение, аспект","diminish":"уменьшать, ослаблять","direct":"направлять; прямой","direction":"направление","directly":"напрямую, непосредственно","director":"директор, руководитель","disagree":"не соглашаться","disagreement":"несогласие, разногласие","disappear":"исчезать","disappoint":"разочаровывать","disappointment":"разочарование","discharge":"разряжать, высвобождать; разряд","discipline":"дисциплина","discomfort":"дискомфорт","disconnect":"разъединять, отключаться","disconnection":"разобщённость, отключение","discount":"обесценивать, не учитывать; скидка","discourage":"обескураживать, отбивать охоту","discover":"обнаруживать, открывать","discovery":"открытие","discuss":"обсуждать","disease":"болезнь","disengage":"отстраняться, отключаться","dispose":"располагать, склонять (disposed to — склонный)","disrespect":"неуважение","disrespectful":"непочтительный","distance":"расстояние, дистанция","distant":"далёкий, отстранённый","distinct":"отчётливый, различный","distinguish":"различать, отличать","distort":"искажать","distraction":"отвлечение","divide":"делить, разделять","dna":"ДНК","do":"делать, выполнять","document":"документировать, записывать; документ","documentary":"документальный (фильм)","doesn't":"не (does not)","dollar":"доллар","domain":"область, сфера","dominate":"доминировать","don't":"не (do not)","door":"дверь","doormat":"половик; человек, о которого вытирают ноги","dopamine":"дофамин","doubt":"сомнение; сомневаться","down":"вниз, внизу","drag":"тянуть, тащить","drain":"истощать, опустошать; утечка","drama":"драма","dramatic":"драматичный, резкий","dramatically":"резко, кардинально","drink":"пить; напиток","drive":"побуждать, вести; побуждение","drown":"тонуть, топить","during":"во время, в течение","dwell":"зацикливаться, подолгу думать","dysfunction":"дисфункция, нарушение","each":"каждый","early":"ранний; рано","easy":"лёгкий, простой","eat":"есть, питаться","edge":"край; преимущество","effect":"эффект, влияние","effective":"эффективный","effectively":"эффективно","effectiveness":"эффективность","effort":"усилие","eggshell":"яичная скорлупа (ходить как по яичной скорлупе)","ego":"эго, самолюбие","either":"любой из двух; тоже (в отрицании)","element":"элемент","elevate":"повышать, поднимать","eliminate":"устранять, исключать","elite":"элитный; элита","else":"ещё, иной, другой","email":"электронное письмо","embarrass":"смущать, ставить в неловкое положение","embarrassment":"смущение, неловкость","embody":"воплощать","emerge":"появляться, возникать","emergency":"чрезвычайная ситуация","emotion":"эмоция, чувство","emotional":"эмоциональный","emotionally":"эмоционально","emotionless":"бесчувственный, без эмоций","empathetic":"эмпатичный, сопереживающий","empathy":"эмпатия, сопереживание","encounter":"сталкиваться, встречать; встреча","encourage":"поощрять, подбадривать","end":"конец; заканчивать","endless":"бесконечный","endurance":"выносливость","endure":"выдерживать, терпеть","energize":"заряжать энергией","energy":"энергия","engage":"вовлекать, задействовать","engine":"двигатель, движок","enhance":"усиливать, улучшать","enormous":"огромный","enough":"достаточно","enter":"входить, вступать","entire":"весь, целый","entirely":"полностью","entrepreneur":"предприниматель","environment":"среда, окружение","environmental":"окружающий, экологический","equal":"равный","equation":"уравнение","equilibrium":"равновесие","erodess":"эродирует (искажённое erodes, разрушает)","escalate":"обострять, эскалировать","escalation":"эскалация, нарастание","escape":"убегать; побег","especially":"особенно","essential":"существенный, необходимый","establish":"устанавливать, формировать","evaluate":"оценивать","evaluation":"оценка","even":"даже; ровный","event":"событие","eventually":"в конце концов, со временем","ever":"когда-либо","every":"каждый, всякий","everyone":"каждый, все","everything":"всё","evidence":"доказательство, данные","evolution":"эволюция","evolve":"развиваться, эволюционировать","exactly":"точно, именно","example":"пример","excellent":"отличный","excessive":"чрезмерный","excite":"возбуждать, волновать","excitement":"волнение, возбуждение","excuse":"оправдание; извинять","execute":"выполнять, исполнять","executive":"исполнительный; руководитель","exercise":"упражнение; тренироваться","exhale":"выдыхать","exhaust":"истощать, изматывать","exist":"существовать","existence":"существование","expand":"расширять, расширяться","expansion":"расширение","expect":"ожидать","expend":"расходовать, тратить","experience":"опыт; переживать, испытывать","explain":"объяснять","explanation":"объяснение","explode":"взрываться","explosive":"взрывной","exponentially":"экспоненциально","expose":"подвергать воздействию, раскрывать","exposure":"воздействие, подверженность","express":"выражать","expression":"выражение","extend":"продлевать, расширять","external":"внешний","externally":"внешне, извне","extract":"извлекать","extraordinary":"необычайный, исключительный","extreme":"крайний, экстремальный","extremely":"крайне, чрезвычайно","face":"сталкиваться с; лицо","fact":"факт","factor":"фактор","fade":"угасать, блёкнуть","fail":"терпеть неудачу, не справляться","failure":"неудача, провал","fake":"поддельный, притворный; подделка","fall":"падать; падение","false":"ложный, неверный","familiar":"знакомый","family":"семья","far":"далеко, далёкий","fascinate":"очаровывать, увлекать","fast":"быстрый; быстро","fatigue":"усталость, утомление","fatty":"жирный","fear":"страх; бояться","fear-based":"основанный на страхе","fearful":"боязливый, испуганный","feedback":"обратная связь","feel":"чувствовать, ощущать","feelgood":"приятный, поднимающий настроение","feeling":"чувство, ощущение","few":"немногие, мало","field":"область, поле","fifth":"пятый; пятая часть","fight":"бороться, драться; борьба","figure":"понимать (figure out); фигура, цифра","file":"файл; подавать","filter":"фильтровать; фильтр","final":"последний, окончательный","financial":"финансовый","find":"находить","finish":"заканчивать, завершать","finite":"конечный, ограниченный","fire":"огонь; запускать, увольнять","first":"первый, сначала","fit":"подходить; здоровый, подходящий","fitness":"физическая форма, фитнес","fix":"исправлять, чинить","flexibility":"гибкость","flexible":"гибкий","flight":"бегство; полёт","flood":"затоплять, захлёстывать; поток","flow":"поток; течь","focus":"фокусироваться, сосредоточиться; фокус","follow":"следовать, следить","food":"еда, пища","for":"для, за, в течение","force":"сила; заставлять, принуждать","forever":"навсегда","forget":"забывать","form":"форма; формировать","forward-looking":"дальновидный, нацеленный в будущее","foundation":"основа, фундамент","four":"четыре","fourth":"четвёртый","fragile":"хрупкий","frame":"рамка; формулировать, оформлять","framework":"структура, система подходов","free":"свободный, бесплатный; освобождать","fresh":"свежий","friend":"друг","frighten":"пугать","from":"из, от, с","front":"перед, передний; фронт","frustrate":"расстраивать, вызывать фрустрацию","frustration":"фрустрация, досада","fuel":"топливо; подпитывать","fulfill":"исполнять, удовлетворять","full":"полный","full-blown":"полномасштабный, в полной мере","fully":"полностью","function":"функция; функционировать","fundamentally":"фундаментально, в корне","future":"будущее","gaba":"ГАМК (тормозной нейромедиатор)","gain":"получать, приобретать; выигрыш","gap":"промежуток, разрыв","generalization":"обобщение","generate":"порождать, генерировать","generic":"общий, типовой","genetics":"генетика","gently":"мягко, осторожно","genuine":"подлинный, искренний","genuinely":"искренне, подлинно","get":"получать, становиться","give":"давать","globalize":"глобализировать, обобщать","glucose":"глюкоза","go":"идти, ехать","goal":"цель","good":"хороший, добрый","govern":"управлять, определять","grace":"изящество, милость; снисхождение","gradually":"постепенно","grand":"грандиозный, великий","granularity":"детализация, степень подробности","grateful":"благодарный","gratification":"удовлетворение, удовольствие","gravitate":"тяготеть","gray":"серый","great":"великий, отличный","greed":"жадность","grievance":"обида, жалоба","grip":"хватка, власть","group":"группа","grow":"расти, развиваться","growth":"рост, развитие","guarantee":"гарантировать; гарантия","guidance":"руководство, наставление","guide":"направлять; руководство","guilt":"вина, чувство вины","habit":"привычка","habitual":"привычный","half":"половина","hand":"рука; передавать","handle":"справляться, обращаться с","happen":"происходить, случаться","happiness":"счастье","happy":"счастливый","hard":"трудный; тяжело, усердно","harness":"использовать, обуздывать","hasn't":"не (has not)","have":"иметь, обладать; (вспомогательный глагол)","haven't":"не имею/не (have not)","head":"голова; возглавлять","headline":"заголовок","health":"здоровье","hear":"слышать","heart":"сердце","heartbreaking":"душераздирающий","heat":"жар, жара; нагревать","heavily":"сильно, тяжело","help":"помогать; помощь","helpful":"полезный, помогающий","here":"здесь, сюда","hide":"прятать, скрывать","high":"высокий, повышенный","highintensity":"высокой интенсивности (high-intensity)","highly":"очень, высоко","highstakes":"с высокими ставками (high-stakes)","highway":"шоссе, магистраль","hijack":"захватывать, перехватывать","hint":"намёк, подсказка","hippocampus":"гиппокамп","history":"история, прошлый опыт","hit":"удар; ударять, поражать","hold":"держать, удерживать","honest":"честный","honesty":"честность","honor":"чтить, уважать; честь","hope":"надеяться; надежда","hormone":"гормон","hot":"горячий","hour":"час","how":"как","human":"человек; человеческий","hungry":"голодный","hurt":"причинять боль, ранить; боль","hurtful":"обидный, ранящий","hydrate":"увлажнять, пить достаточно воды","hyper":"гипер-, сверхактивный","hyperactive":"гиперактивный","i":"я","i'm":"я есть (I am)","i've":"я имею (I have)","ice":"лёд","idea":"идея, мысль","identical":"идентичный, одинаковый","identification":"идентификация, отождествление","identify":"определять, распознавать","identity":"идентичность, личность","if":"если, ли","ignore":"игнорировать","iikido":"айкидо-подобный термин (ошибка распознавания: Aikido)","image":"образ, изображение","imaginable":"мыслимый, вообразимый","imagine":"воображать, представлять","immediate":"немедленный, непосредственный","immediately":"немедленно, сразу","immune":"иммунный; невосприимчивый","impact":"влияние, воздействие","impactful":"значимый, влиятельный","impair":"ухудшать, нарушать","imperfection":"несовершенство","implement":"внедрять, реализовывать","important":"важный","importantly":"что важно, важно то, что","impossible":"невозможный","impostor":"самозванец (синдром самозванца)","impress":"впечатлять","improve":"улучшать, совершенствовать","improvement":"улучшение","impulse":"импульс, порыв","impulsive":"импульсивный","in":"в, внутри","inaction":"бездействие","inadequate":"недостаточный, неадекватный","incision":"разрез, надрез","include":"включать","incomplete":"незавершённый, неполный","inconsiderate":"невнимательный к другим, бестактный","inconvenience":"неудобство","increase":"увеличивать, повышать; рост","incredibly":"невероятно","indicate":"указывать, свидетельствовать","indicator":"показатель, индикатор","individual":"отдельный человек; индивидуальный","indulge":"потакать, баловать себя","ineffective":"неэффективный","infinitely":"бесконечно","inflammation":"воспаление","influence":"влиять; влияние","information":"информация","inhibitory":"тормозящий","initial":"начальный, первоначальный","initially":"первоначально, сначала","injustice":"несправедливость","inner":"внутренний","innovative":"инновационный","inoculation":"прививка, выработка устойчивости","input":"вход, вклад; данные","insecurity":"неуверенность","inside":"внутри","insight":"озарение, понимание","insignificant":"незначительный","inspire":"вдохновлять","install":"устанавливать","instantly":"мгновенно","instead":"вместо этого","instinct":"инстинкт","instruction":"инструкция, указание","insula":"островок (область мозга)","intact":"нетронутый, целый","integrate":"интегрировать, объединять","integration":"интеграция","integrity":"целостность, честность","intellectual":"интеллектуальный","intellectually":"интеллектуально","intelligence":"интеллект, разум","intelligent":"умный, разумный","intend":"намереваться","intense":"интенсивный, сильный","intensity":"интенсивность, сила","intention":"намерение","intentional":"намеренный, осознанный","intentionally":"намеренно","interact":"взаимодействовать","interaction":"взаимодействие","interest":"интерес","internal":"внутренний","internally":"внутренне","interpret":"интерпретировать, истолковывать","interpretation":"интерпретация, толкование","interrupt":"прерывать","intervention":"вмешательство","intimately":"тесно, глубоко","intimidate":"запугивать","into":"в (внутрь), во","introduce":"вводить, представлять","invaluable":"бесценный","invest":"вкладывать, инвестировать","investment":"инвестиция, вложение","invisible":"невидимый","invite":"приглашать","involve":"включать, вовлекать","irrelevant":"не относящийся к делу, неважный","irritable":"раздражительный","isn't":"не является (is not)","isolation":"изоляция, одиночество","issue":"проблема, вопрос; выпуск","it":"оно, это","its":"его, её (о предмете)","itself":"себя, сам","jam":"пробка, затор; варенье","job":"работа","join":"присоединяться, соединять","journal":"вести дневник; дневник","journey":"путь, путешествие","judge":"судить, оценивать","judgment":"суждение, оценка","jump":"прыгать; прыжок","just":"просто, только, лишь","justify":"оправдывать","keep":"держать, сохранять, продолжать","key":"ключевой; ключ","keyboard":"клавиатура","kill":"убивать","kind":"вид, тип; добрый","knot":"узел","know":"знать","knowledge":"знание, знания","label":"называть, маркировать; ярлык","lack":"нехватка; не хватать","large":"большой, крупный","laser":"лазер (laser-focused: чётко сфокусированный)","lash":"хлестать; удар плетью (lash out: срываться)","last":"длиться; последний","late":"поздний; поздно","lead":"вести, приводить; лидерство","leader":"лидер, руководитель","leadership":"лидерство, руководство","learn":"учиться, узнавать, усваивать","learner":"обучающийся, ученик","least":"наименьший; по меньшей мере","leave":"оставлять, уходить","less":"меньше, менее","lesson":"урок","let":"позволять, разрешать","letter":"письмо, буква","level":"уровень","liability":"обуза, ответственность","liberate":"освобождать","lie":"лгать, лежать; ложь","life":"жизнь","lifespan":"продолжительность жизни","lifetime":"всю жизнь; продолжительность жизни","like":"как, подобно; нравиться","likely":"вероятно, вероятный","limbic":"лимбический (о системе мозга)","limit":"предел; ограничивать","limitation":"ограничение","line":"линия, строка","list":"список","listen":"слушать","literal":"буквальный","literally":"буквально, в прямом смысле","little":"маленький, мало","live":"жить","load":"нагрузка; загружать","log":"журнал, запись; записывать","logic":"логика","long":"долгий; долго","long-term":"долгосрочный","longerterm":"более долгосрочный (longer-term)","look":"смотреть; выглядеть; взгляд","loop":"петля, цикл","lose":"терять, проигрывать","loss":"потеря, утрата","loudly":"громко","love":"любовь; любить","low":"низкий","low-level":"низкоуровневый","lower":"понижать; более низкий","luck":"удача","luxury":"роскошь","lyic":"искажённый токен (возможно limbic, лимбический)","magnetic":"магнитный; притягательный","magnify":"увеличивать, преувеличивать","magnitude":"масштаб, величина","maintain":"поддерживать, сохранять","maintenance":"поддержание, обслуживание","major":"крупный, основной","make":"делать, заставлять, создавать","manage":"управлять, справляться","manageable":"управляемый, посильный","management":"управление","manipulable":"поддающийся манипуляции","manipulate":"манипулировать","manipulative":"манипулятивный","many":"много, многие","marry":"жениться, выходить замуж","martial":"боевой (martial arts — боевые искусства)","massive":"огромный, массивный","master":"овладевать; мастер","mastery":"мастерство, овладение","match":"соответствовать; совпадение; матч","math":"математика","matter":"иметь значение; вопрос, дело","maturity":"зрелость","maybe":"может быть","me":"меня, мне","meal":"приём пищи","mean":"означать, иметь в виду","meaning":"смысл, значение","meaningful":"значимый, осмысленный","meaningless":"бессмысленный","meanwhile":"тем временем","measurable":"измеримый","measure":"измерять; мера","measurement":"измерение","mechanism":"механизм","media":"медиа, СМИ","meditation":"медитация","meet":"встречать, встречаться; (meeting) встреча","memo":"записка, памятка","memory":"память, воспоминание","mental":"умственный, психический","mentally":"мысленно, психически","mercy":"милосердие, власть (at the mercy of)","message":"сообщение, послание","meta":"мета-, над- (о себе, о мышлении)","method":"метод, способ","micros":"микро-, мелкие (обрезок от micro-)","middle":"середина, средний","might":"мог бы, возможно; мощь","million":"миллион","millisecond":"миллисекунда","mimic":"имитировать, копировать","mind":"разум, ум; возражать","mindfulness":"осознанность, майндфулнес","mindset":"образ мышления, установка","minimize":"минимизировать, сводить к минимуму","minor":"незначительный, мелкий","minute":"минута","mirror":"зеркало; отражать","misaligned":"рассогласованный, не совпадающий","misalignment":"несоответствие, рассогласование","mismanage":"плохо управлять","miss":"пропускать, скучать по","mission":"миссия","mistake":"ошибка","misunderstand":"неправильно понимать","mode":"режим, способ","model":"модель; моделировать","modern":"современный","modification":"изменение, модификация","moment":"момент, миг","money":"деньги","monitor":"отслеживать, контролировать; монитор","monkey":"обезьяна","month":"месяц","monthly":"ежемесячный","mood":"настроение","more":"больше, более","morning":"утро","most":"наиболее, большинство","motivate":"мотивировать","motivation":"мотивация","motor":"двигательный; мотор","mouth":"рот","move":"двигаться; движение","movement":"движение","much":"много, гораздо","multiple":"множественный, многократный","multiply":"умножать, размножать","muscle":"мышца","musical":"музыкальный","must":"должен, обязан","my":"мой","myself":"сам, себя, себе","name":"называть; имя","narrative":"нарратив, повествование","natural":"естественный","naturally":"естественно, от природы","nature":"природа, суть","navigate":"ориентироваться, преодолевать","navy":"военно-морской флот; тёмно-синий","nearly":"почти","necessary":"необходимый","need":"нуждаться; потребность","neediness":"нуждаемость, потребность во внимании","negative":"негативный, отрицательный","negativity":"негативность, негатив","neglect":"пренебрегать, игнорировать","negotiate":"вести переговоры","negotiation":"переговоры","negotiator":"переговорщик","nerve":"нерв; смелость","nervous":"нервный, тревожный","network":"сеть","neural":"нейронный","neurological":"неврологический","neuron":"нейрон","neuroplastic":"нейропластичный","neuroplasticity":"нейропластичность","neuroscience":"нейронаука","neurotransmitter":"нейромедиатор","neurotrophic":"нейротрофический","neutral":"нейтральный","never":"никогда","new":"новый","news":"новости","next":"следующий, далее","night":"ночь","nine":"девять","no":"нет, никакой","noise":"шум","non-existent":"несуществующий","non-negotiable":"не подлежащий обсуждению","non-reaction":"отсутствие реакции","non-reactive":"нереактивный, не реагирующий импульсивно","nonreaction":"отсутствие реакции","normal":"нормальный","normally":"обычно, в норме","nose":"нос","not":"не","note":"заметка; отмечать","nothing":"ничего","notice":"замечать","notification":"уведомление","now":"сейчас, теперь","nuance":"нюанс, оттенок","nutrition":"питание","nutritional":"питательный, пищевой","o":"о (часть слова/ошибка распознавания)","objective":"объективный; цель","objectively":"объективно","observation":"наблюдение","observe":"наблюдать, замечать","obsess":"зацикливаться, быть одержимым","obstacle":"препятствие","occasionally":"иногда, время от времени","occur":"происходить, возникать","of":"из, о (родительный падеж)","off":"выключено, прочь","offline":"офлайн, отключённый","often":"часто","old":"старый","omega-3":"омега-3 (жирные кислоты)","on":"на, о, по","once":"однажды, один раз; как только","one":"один; некто","only":"только, единственный","onoff":"включено-выключено (on/off)","open":"открытый; открывать","operate":"работать, действовать, управлять","operation":"операция, работа","operator":"оператор","opportunity":"возможность, шанс","oppose":"противостоять, возражать","optimism":"оптимизм","optimistic":"оптимистичный","optimization":"оптимизация","optimize":"оптимизировать","optional":"необязательный, по желанию","or":"или","order":"порядок; приказ; заказ","organization":"организация","orientation":"ориентация, направленность","other":"другой, иной","otherwise":"иначе, в противном случае","our":"наш","out":"наружу, вне","outburst":"вспышка, взрыв эмоций","outcome":"результат, исход","outlet":"выход, отдушина","outrage":"возмущение, негодование","outside":"снаружи, вне","over":"над, через, по окончании","overcome":"преодолевать","overload":"перегрузка; перегружать","overnight":"за одну ночь, ночной","override":"перекрывать, отменять","overwhelm":"захлёстывать, подавлять","own":"собственный; владеть","p":"обрывок слова или буква «п»","p.m":"после полудня (вечером)","pain":"боль","painful":"болезненный","paint":"рисовать, красить","panic":"паника; паниковать","paralyze":"парализовать","parasympathetic":"парасимпатический","parent":"родитель","part":"часть","partially":"частично","particularly":"особенно","partly":"частично","partner":"партнёр","partnership":"партнёрство","passion":"страсть","past":"прошлое; мимо","pathogen":"патоген, возбудитель болезни","pathway":"путь; нейронный путь","patience":"терпение","patient":"терпеливый; пациент","pattern":"паттерн, шаблон, модель","pause":"пауза; приостанавливать","pay":"платить; уделять (внимание)","peace":"покой, мир","peaceful":"мирный, спокойный","peak":"пик, вершина","people":"люди","per":"за, на (в расчёте на)","perceive":"воспринимать","perfect":"идеальный, совершенный","perfection":"совершенство","perform":"выполнять, действовать","performance":"результативность, продуктивность; выступление","performer":"исполнитель; результативный человек","perhaps":"возможно, пожалуй","period":"период","permanent":"постоянный, непреходящий","permanently":"навсегда, постоянно","permission":"разрешение","persistence":"настойчивость","person":"человек, личность","personal":"личный","personally":"лично","perspective":"точка зрения, перспектива","pessimistic":"пессимистичный","phone":"телефон","physical":"физический, телесный","physically":"физически","physiological":"физиологический","picture":"картина, образ","pillar":"опора, столп","pilot":"пилот; пробный","place":"место; помещать","plague":"преследовать, мучить; чума","plan":"планировать; план","plane":"самолёт; плоскость, уровень","plant":"растение; сажать","plastic":"пластичный; пластик","plausible":"правдоподобный","play":"играть; играть роль","pleasure":"удовольствие","point":"пункт, суть; указывать","politeness":"вежливость","poor":"бедный, плохой","poorly":"плохо","portion":"порция, часть","position":"позиция, положение","positional":"позиционный, основанный на позиции","positive":"положительный, позитивный","possibility":"возможность","possible":"возможный","potential":"потенциал; потенциальный","potentially":"потенциально","power":"сила, власть","powerful":"мощный, сильный","powerless":"бессильный","practical":"практичный, практический","practice":"практиковать, тренировать; практика","precise":"точный","precisely":"точно, именно","precision":"точность","predator":"хищник","predictable":"предсказуемый","preffrontal":"префронтальный (опечатка prefrontal)","prefrontal":"префронтальный","preparation":"подготовка","prepare":"готовить, готовиться","prerequisite":"предпосылка, необходимое условие","presence":"присутствие, осознанность","present":"настоящий, присутствующий; представлять","presentation":"презентация, выступление","preserve":"сохранять","pressure":"давление, нагрузка; прессинг","pressurize":"создавать давление, нагнетать","pretend":"притворяться","pretense":"притворство, видимость","prevent":"предотвращать, предупреждать","primary":"основной, первичный","primitive":"примитивный, первобытный","principle":"принцип","prioritize":"расставлять приоритеты","priority":"приоритет","privilege":"привилегия","probably":"вероятно, наверное","problem":"проблема, задача","problematic":"проблематичный","procedure":"процедура","proceed":"продолжать, переходить к","process":"обрабатывать; процесс","production":"выработка, производство","productive":"продуктивный","productively":"продуктивно","productivity":"продуктивность","professional":"профессиональный; профессионал","profound":"глубокий, значительный","progress":"прогресс, продвижение","progressive":"постепенный, прогрессивный","project":"проект; проецировать","promise":"обещание; обещать","promote":"способствовать, продвигать","promotion":"повышение (по службе), продвижение","proper":"надлежащий, правильный","properly":"правильно, должным образом","protect":"защищать","protection":"защита","protein":"белок","protocol":"протокол, порядок действий","proud":"гордый","prove":"доказывать, оказываться","provide":"обеспечивать, предоставлять","psyche":"психика","psychological":"психологический","psychology":"психология","public":"публичный; общественность","punishment":"наказание","pure":"чистый","purpose":"цель, назначение","pursue":"преследовать, добиваться","push":"толкать, подталкивать","put":"класть, помещать","quality":"качество","quantity":"количество","question":"вопрос; ставить под сомнение","quick":"быстрый","quickly":"быстро","quiet":"тихий, спокойный","quietly":"тихо, спокойно","quit":"бросать, уходить","race":"мчаться; гонка","raise":"поднимать, повышать","random":"случайный","rapid":"быстрый","rate":"скорость, уровень; оценивать","rather":"скорее, довольно","rational":"рациональный, разумный","rationally":"рационально","reach":"достигать, дотягиваться","react":"реагировать","reaction":"реакция","reactive":"реактивный, импульсивный","reactively":"реактивно, импульсивно реагируя","reactivity":"реактивность, импульсивная реакция","read":"читать","ready":"готовый","real":"настоящий, реальный","realistic":"реалистичный","reality":"реальность","realize":"осознавать, понимать","really":"действительно, на самом деле","realm":"сфера, область","reason":"причина; рассуждать","reasonable":"разумный","reassert":"вновь утверждать, восстанавливать контроль","receive":"получать","reckless":"безрассудный","recognize":"узнавать, распознавать, осознавать","record":"запись; записывать; рекорд","recover":"восстанавливаться","recovery":"восстановление","redirect":"перенаправлять","reduce":"снижать, уменьшать","refine":"совершенствовать, оттачивать","reflect":"размышлять, отражать","reflection":"размышление, рефлексия","reframe":"переосмыслить, перефразировать","reframed":"переосмысленный (reframe)","reframing":"переосмысление, смена рамки восприятия","regain":"восстанавливать, вернуть себе","regardless":"независимо, несмотря ни на что","region":"область, регион (мозга)","regret":"сожалеть; сожаление","regular":"регулярный, обычный","regularly":"регулярно","regulate":"регулировать","regulation":"регуляция, регулирование","rehearsal":"репетиция, мысленная прокрутка","rehearse":"репетировать, мысленно проигрывать","reinforce":"закреплять, усиливать","rejection":"отвержение, отказ","relate":"относиться, соотносить","relational":"относящийся к отношениям","relationship":"отношения, связь","relatively":"относительно","relax":"расслабляться","relaxation":"расслабление","release":"высвобождать, отпускать; освобождение","reliability":"надёжность","reliably":"надёжно","relieve":"облегчать, снимать","rely":"полагаться","remain":"оставаться","remember":"помнить, вспоминать","reorganize":"реорганизовать, перестраивать","repair":"чинить, восстанавливать","repeat":"повторять","repeatable":"повторяемый","repeatedly":"неоднократно","repertoire":"репертуар, набор приёмов","repetitive":"повторяющийся","replace":"заменять","represent":"представлять, олицетворять","reputation":"репутация","require":"требовать, нуждаться в","requirement":"требование","research":"исследование","resentment":"обида, негодование","reservoir":"резервуар, запас","reset":"сбрасывать, перезапускать","resilience":"устойчивость, жизнестойкость","resilient":"устойчивый к стрессу, жизнестойкий","resist":"сопротивляться","resistance":"сопротивление","resolution":"решение, разрешение","resolve":"разрешать, решать; решимость","resonate":"резонировать, отзываться","resource":"ресурс","respect":"уважение; уважать","respond":"реагировать, отвечать","responders":"реагирующие, спасатели","response":"реакция, ответ","responsibility":"ответственность","responsible":"ответственный","rest":"отдых; остаток","restoration":"восстановление","restore":"восстанавливать","restructure":"перестраивать, реорганизовать","result":"результат; приводить к","retreat":"отступать; отступление","return":"возвращаться; возврат","reveal":"раскрывать, показывать","reverse":"обращать вспять; обратный","review":"пересматривать; обзор","revise":"пересматривать, исправлять","reward":"вознаграждение; вознаграждать","rewire":"перестраивать (нейронные связи)","right":"правильный, правый; право","rigid":"жёсткий, негибкий","ripple":"рябь; волновой эффект","rise":"подниматься, расти","risk":"риск; рисковать","risk-taking":"склонность к риску","roadblock":"препятствие, преграда","robust":"устойчивый, крепкий","rocket":"ракета","role":"роль","room":"комната; место","routine":"рутина, распорядок","rumination":"руминация, навязчивое пережёвывание мыслей","run":"бежать, запускать; работать","rush":"спешка, прилив; спешить","ruthless":"безжалостный","ruthlessly":"беспощадно, безжалостно","s":"-'s (притяжательный; is, has)","saber-tooth":"саблезубый (тигр)","sabotage":"саботировать, подрывать","sacred":"священный","sad":"грустный","sadness":"грусть, печаль","safe":"безопасный","safety":"безопасность","same":"тот же, одинаковый","satisfaction":"удовлетворение","satisfy":"удовлетворять","save":"сохранять, спасать, экономить","say":"говорить, сказать","scale":"шкала, масштаб","scan":"сканировать; сканирование","scare":"пугать; испуг","scatter":"рассеивать, разбрасывать","scenario":"сценарий","schedule":"расписание; планировать","science":"наука","scientist":"учёный","scream":"кричать; крик","screen":"экран","script":"сценарий, шаблон поведения","scrutiny":"тщательное изучение, пристальный взгляд","seal":"печать; запечатывать","second":"секунда; второй","second-guessing":"сомнения в своих решениях","secondsonds":"секунды (искажённое seconds)","secure":"надёжный, уверенный; защищать","security":"безопасность, защищённость","sedentary":"малоподвижный, сидячий","see":"видеть, понимать","seed":"семя; зародыш","seek":"искать, стремиться","seem":"казаться, представляться","self":"я, личность, самость","self-awareness":"самоосознание","self-conscious":"стеснительный, скованный","self-control":"самоконтроль","self-criticism":"самокритика","self-d":"обрывок слова self-doubt (неуверенность в себе)","self-doubt":"неуверенность в себе","self-focus":"сосредоточенность на себе","self-focused":"сосредоточенный на себе","self-p":"обрывок слова (self-...), напр. self-protection","self-reliance":"самостоятельность, опора на себя","self-respect":"самоуважение","self-talk":"внутренний диалог","selfdoubt":"неуверенность в себе (self-doubt)","sematic":"вероятно ошибка распознавания: semantic (семантический)","send":"отправлять, посылать","sensation":"ощущение, чувство","sense":"чувство, смысл; ощущать","sensitive":"чувствительный","separate":"отделять, разделять; отдельный","sequence":"последовательность","serious":"серьёзный","seriously":"серьёзно","serotonin":"серотонин","serve":"служить, приносить пользу","service":"услуга, служба","set":"устанавливать, задавать; набор","setback":"неудача, откат назад","setup":"настройка, организация, расстановка","seventh":"седьмой","several":"несколько","severe":"тяжёлый, суровый","shake":"трясти, потрясать","shallow":"поверхностный, мелкий","shame":"стыд","shape":"формировать; форма","share":"делиться; доля","shift":"сдвиг, смена; смещать","shock":"шок; потрясать","short-term":"краткосрочный","shortcut":"короткий путь, быстрый способ","shorten":"укорачивать, сокращать","should":"следует, должен","shouldn't":"не следует (should not)","show":"показывать, демонстрировать","shower":"душ; ливень","shrink":"уменьшаться, сжиматься","shut":"закрывать","sign":"признак, знак","signal":"сигнал; сигнализировать","significant":"значительный, существенный","significantly":"значительно","silence":"тишина, молчание","similar":"похожий, схожий","simple":"простой","simply":"просто","simultaneously":"одновременно","single":"единственный, одиночный","singulate":"поясная (искажённое cingulate, cингулярная кора)","sit":"сидеть","situation":"ситуация, обстоятельства","six":"шесть","sixth":"шестой","size":"размер","skill":"навык, умение","skip":"пропускать","sleep":"сон; спать","sleepdeprived":"недосыпающий (sleep-deprived)","slide":"скользить, сползать; слайд","slight":"лёгкий, незначительный","slightly":"слегка, немного","slow":"медленный; замедлять","slowly":"медленно","sluggish":"вялый, заторможенный","small":"маленький, небольшой","smart":"умный","so":"так, поэтому, итак","sober":"трезвый, отрезвляющий","social":"социальный, общественный","solution":"решение","solve":"решать (проблему)","somatic":"соматический, телесный","some":"некоторые, несколько","someone":"кто-то","something":"что-то, нечто","sometimes":"иногда","soon":"скоро","sophisticate":"усложнять, утончать; искушённый","sort":"вид, сорт; сортировать","sound":"звучать; звук; здравый","source":"источник","space":"пространство, пауза; космос","speak":"говорить","special":"особый, специальный","specific":"конкретный, определённый","specifically":"конкретно, в частности","spectacularly":"впечатляюще, эффектно","spend":"тратить, проводить (время)","spin":"вращаться, крутиться","spiral":"спираль; нисходящая спираль мыслей","splash":"брызги; плескать","sporadic":"эпизодический, нерегулярный","sport":"спорт","spouse":"супруг, супруга","stability":"стабильность, устойчивость","stabilize":"стабилизировать","stable":"стабильный, устойчивый","stagger":"потрясать, шататься; ошеломлять","stake":"ставка; доля","stand":"стоять, выдерживать","standard":"стандарт, норма","start":"начинать; начало","state":"состояние; заявлять","stay":"оставаться","stem":"происходить; стебель, ствол (мозга)","step":"шаг; шагать","stick":"прилипать, держаться; палка","still":"всё ещё, спокойный; неподвижный","stimulate":"стимулировать","stimulus":"стимул, раздражитель","stomach":"желудок, живот","stone":"камень","stop":"останавливать, прекращать","storm":"буря, шторм","story":"история, рассказ","straight":"прямой, прямо","strategic":"стратегический","strategically":"стратегически","strategy":"стратегия","strength":"сила","strengthen":"укреплять, усиливать","stress":"стресс; подчёркивать","stressful":"стрессовый","stressors":"стрессоры, стресс-факторы","strip":"лишать, снимать; полоса","strong":"сильный, крепкий","structural":"структурный","structure":"структура","struggle":"бороться, мучиться; борьба","study":"изучать; исследование","succeed":"преуспевать","success":"успех","successful":"успешный","successfully":"успешно","such":"такой","suddenly":"внезапно","suffer":"страдать","sugar":"сахар","suggest":"предлагать, подсказывать","suggestion":"предложение, совет","superior":"превосходящий, вышестоящий","superpower":"суперсила","support":"поддержка; поддерживать","supportive":"поддерживающий","suppress":"подавлять","suppression":"подавление","sure":"уверенный; конечно","surface":"поверхность; всплывать","surgeon":"хирург","survival":"выживание","survive":"выживать","sustain":"поддерживать, выдерживать","swim":"плавать","switch":"переключать(ся); переключатель","sympathetic":"симпатический (нервная система); сочувствующий","syndrome":"синдром","system":"система","systematic":"систематический","systematically":"систематически","t":"обрывок слова (часть сокращения, напр. n't)","take":"брать, принимать","talent":"талант","target":"цель; нацеливать","task":"задача, задание","teach":"учить, обучать","team":"команда","technical":"технический","technique":"техника, приём, метод","technology":"технология","tell":"говорить, рассказывать","temper":"нрав, вспыльчивость","temperature":"температура","temporarily":"временно","temporary":"временный","tend":"иметь склонность, как правило","tendency":"склонность, тенденция","tense":"напряжённый","tension":"напряжение","term":"термин; срок; условие","terrible":"ужасный","test":"тест, испытание; проверять","text":"текст; писать сообщение","than":"чем (в сравнении)","thank":"благодарить","that":"что, тот, который","the":"определённый артикль","their":"их","them":"их, им","themselves":"себя, сами","then":"затем, тогда","there":"там; (there is) есть, имеется","therefore":"поэтому, следовательно","these":"эти","they":"они","they'll":"они будут (they will)","they're":"они есть (they are)","they've":"они имеют/они уже (they have)","thing":"вещь, дело","think":"думать, мыслить","third":"третий; треть","this":"этот, это","those":"те","though":"хотя, впрочем","thought":"мысль, думание","thoughtful":"вдумчивый, заботливый","thoughtfully":"вдумчиво","threat":"угроза","threaten":"угрожать","three":"три","threshold":"порог","thrive":"процветать, преуспевать","through":"через, сквозь","throughout":"на протяжении, повсюду","throw":"бросать","tiger":"тигр","time":"время, раз","timeconuming":"времязатратный (искажённое time-consuming)","timeline":"график, сроки, хронология","timelines":"сроки, графики","timer":"таймер","tire":"утомлять, уставать","tissue":"ткань","to":"к, в, чтобы (частица инфинитива)","today":"сегодня","toe":"палец ноги","tolerance":"терпимость, устойчивость","toll":"цена, урон; пошлина","tomorrow":"завтра","tone":"тон; тонус","too":"тоже, слишком","tool":"инструмент","toolkit":"набор инструментов","top":"верх, вершина; высший","torture":"мучить; пытка","tough":"трудный, жёсткий","toughness":"стойкость, выносливость","toward":"к, по направлению к","towards":"к, по направлению к","toxic":"токсичный","track":"отслеживать; след, трек","traffic":"дорожное движение, трафик","train":"тренировать; поезд","trajectory":"траектория, курс","transform":"преобразовывать, превращать","transformation":"преобразование, трансформация","transition":"переход","translate":"переводить, преобразовывать","transmit":"передавать","trap":"ловушка; загонять в ловушку","traumatize":"травмировать","travel":"путешествовать; поездка","treat":"относиться, обращаться; лечить","tremendous":"огромный, колоссальный","trigger":"вызывать, запускать; триггер","true":"истинный, верный","truly":"поистине, действительно","trust":"доверять; доверие","truth":"правда, истина","try":"пытаться, пробовать","tune":"настраивать; мелодия","turn":"поворачивать, превращать; очередь","two":"два","type":"тип; печатать","typically":"обычно, как правило","ultimate":"высший, окончательный","umbrella":"зонт","unacceptable":"неприемлемый","unaware":"не осознающий, не знающий","uncertain":"неопределённый, неуверенный","uncertainty":"неопределённость","unchangeable":"неизменяемый","unclear":"неясный","uncomfortable":"некомфортный, неудобный","unconscious":"бессознательный","unconsciously":"бессознательно","uncontrolled":"неконтролируемый","under":"под, при","underestimate":"недооценивать","undergo":"переживать, подвергаться","underlie":"лежать в основе","undermine":"подрывать, ослаблять","understand":"понимать, осознавать","unexpected":"неожиданный","unfair":"несправедливый","unfamiliar":"незнакомый","unfortunate":"неудачный, досадный","unknown":"неизвестный","unless":"если только не","unlike":"в отличие от","unlimited":"неограниченный","unlock":"открывать, разблокировать","unmet":"неудовлетворённый","unnecessary":"ненужный, лишний","unpredictability":"непредсказуемость","unpredictable":"непредсказуемый","unreasonable":"необоснованный, неразумный","unreliable":"ненадёжный","unshakable":"непоколебимый","unstable":"нестабильный","until":"до тех пор, пока не","unwitting":"неосознанный, невольный","up":"вверх, вверху","update":"обновлять; обновление","upgrade":"улучшение, обновление; улучшать","upset":"расстроенный; расстраивать","upward":"вверх, восходящий","urgent":"срочный","usage":"использование, применение","use":"использовать; применение","useful":"полезный","useless":"бесполезный","usually":"обычно","vacation":"отпуск","vaccine":"вакцина","vague":"расплывчатый, смутный","vagus":"блуждающий (нерв)","validation":"подтверждение, признание ценности","valuable":"ценный","value":"ценность; ценить; значение","vary":"варьироваться, меняться","vent":"выплёскивать эмоции; отдушина","version":"версия","versus":"против","very":"очень","view":"рассматривать; взгляд, мнение","viewpoint":"точка зрения","vigorous":"энергичный, интенсивный","violate":"нарушать","virtually":"практически, фактически","vision":"видение, зрение","visualization":"визуализация","visualize":"визуализировать, представлять","vividly":"ярко, живо","vocabulary":"словарный запас","voice":"голос","volatile":"нестабильный, изменчивый","voluntarily":"добровольно","voluntary":"добровольный, произвольный","vulnerability":"уязвимость","vulnerable":"уязвимый","wait":"ждать, ожидать","walk":"ходить; прогулка","wander":"блуждать","want":"хотеть","warn":"предупреждать","warrant":"оправдывать, требовать; основание","waste":"тратить впустую; отходы","watch":"наблюдать, смотреть","water":"вода","way":"путь, способ","we":"мы","we're":"мы есть (we are)","weak":"слабый","weaken":"ослаблять","weakness":"слабость","week":"неделя","weekend":"выходные","weekly":"еженедельный","well":"хорошо; колодец","well-being":"благополучие, самочувствие","well-intentioned":"благонамеренный","weren't":"не были (were not)","what":"что, какой","whatever":"что бы ни, любой","when":"когда","where":"где, куда","whether":"ли","which":"который, какой","while":"пока, в то время как","white":"белый","who":"кто, который","why":"почему","will":"будет (вспомогательный); воля","willing":"готовый, склонный","win":"побеждать, выигрывать","winner":"победитель","wire":"программировать связи, соединять; провод","wisdom":"мудрость","wish":"желать; желание","with":"с, вместе с","withdraw":"отстраняться, замыкаться; снимать","within":"внутри, в пределах","without":"без","won't":"не будет (will not)","wonder":"задаваться вопросом; чудо","word":"слово","work":"работать, действовать; работа","workout":"тренировка","workplace":"рабочее место","world":"мир","worldview":"мировоззрение","worry":"беспокоиться; беспокойство","worse":"хуже","worst":"худший","worth":"стоящий; ценность","worthwhile":"стоящий, оправданный","worthy":"достойный","would":"бы (условное наклонение)","wouldn't":"не стал бы (would not)","write":"писать","wrong":"неправильный, ошибочный","year":"год","yes":"да","yet":"ещё, всё же, пока","you":"ты, вы","you'll":"ты будешь (you will)","you're":"ты есть, вы есть (you are)","you've":"ты имеешь, вы имеете (you have)","your":"твой, ваш","yours":"твой, ваш (без существительного)","yourself":"себя, сам","zero":"ноль","zone":"зона"};
+
+// Хранение в браузере: статусы слов общие для всех книг, позиция у каждой книги своя
+window.createLocalStore = function () {
+  const WORDS_KEY = "audio-english:words";
+  const SETTINGS_KEY = "audio-english:settings";
+  const POSITION_PREFIX = "audio-english:position:";
+  let notice = () => {};
+  let wordsListener = () => {};
+  let words = {};
+
+  function read(key) {
+    try {
+      return JSON.parse(localStorage.getItem(key));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function write(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      notice("Браузер не сохраняет прогресс. Сохраните статусы кнопкой «Экспорт».");
+    }
+  }
+
+  words = read(WORDS_KEY) || {};
+
+  return {
+    read,
+    write,
+    words: () => Object.assign({}, words),
+    setWord(word, status) {
+      this.setWords({ [word]: status });
+    },
+    setWords(changes) {
+      Object.keys(changes).forEach((word) => {
+        if (changes[word]) words[word] = changes[word]; else delete words[word];
+      });
+      write(WORDS_KEY, words);
+    },
+    replaceWords(next) {
+      words = next;
+      write(WORDS_KEY, words);
+      wordsListener(this.words());
+    },
+    position: (bookId) => read(POSITION_PREFIX + bookId) || 0,
+    // Все позиции разом — для резервной копии
+    positions() {
+      const out = {};
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key.startsWith(POSITION_PREFIX)) out[key.slice(POSITION_PREFIX.length)] = read(key) || 0;
+        }
+      } catch (e) { /* хранилище недоступно */ }
+      return out;
+    },
+    savePosition: (bookId, seconds) => write(POSITION_PREFIX + bookId, seconds),
+    settings: () => read(SETTINGS_KEY) || {},
+    saveSettings: (settings) => write(SETTINGS_KEY, settings),
+    onWordsChanged(listener) {
+      wordsListener = listener;
+    },
+    onNotice(listener) {
+      notice = listener;
+    },
+    notify: (text) => notice(text),
+
+    // Прежний формат: статусы и позиция лежали вместе под названием книги
+    adoptOldFormat(book) {
+      const oldKey = "audio-english:" + book.title;
+      const old = read(oldKey);
+      if (!old) return;
+      this.setWords(Object.assign({}, old.statuses, words));
+      if (!this.position(book.id) && old.position) this.savePosition(book.id, old.position);
+      localStorage.removeItem(oldKey);
+    },
+  };
+};
+
+window.startAudioEnglish = function (book, env) {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const KNOWN = 1, MEDIUM = 2, UNKNOWN = 3, NONE = 0;
+  const STATUS_CLASSES = ["", "st-1", "st-2", "st-3"];
+  const TEXT_SCALES = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.75, 2];
+  const SPEEDS = [0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
+  const SENTENCE_END_MARGIN = 0.05; // сек: чтобы пауза не захватывала начало следующей фразы
+
+  const audio = $("audio");
+  const times = book.times.map((ms) => ms / 1000);
+  const starts = book.sentenceStarts;
+
+  // Состояние, которое переживает перезагрузку страницы
+  const state = { statuses: {}, position: 0, speed: 1, stopAfter: false, sort: "freq", filters: [], textScale: 1 };
+
+  // Начальная форма для каждой формы слова этой книги
+  const lemmaOf = {};
+  book.forms.forEach((forms, v) => forms.forEach((form) => { lemmaOf[form] = book.vocab[v]; }));
+
+  // Индексы по токенам и словарю
+  const wordSpans = book.vocab.map(() => []);
+  const vocabCount = new Array(book.vocab.length).fill(0);
+  const vocabFirst = new Array(book.vocab.length).fill(-1);
+  book.tokenVocab.forEach((v, i) => {
+    if (v < 0) return;
+    vocabCount[v]++;
+    if (vocabFirst[v] < 0) vocabFirst[v] = i;
+  });
+  const tokenCountTotal = vocabCount.reduce((a, b) => a + b, 0);
+  const tokenSpans = new Array(book.tokens.length);
+  const sentenceEls = new Array(starts.length);
+
+  let currentToken = -1;
+  let currentSentence = 0;
+  let boundSentence = 0; // фраза, конец которой отслеживают повтор и стоп-после-фразы
+  let loopSentence = false;
+  let follow = true;
+  let selected = -1; // индекс слова в словаре
+  let selectedToken = -1;
+  let seeking = false;
+
+  /* ---------- Сохранение ---------- */
+
+  // Приводит статусы к начальным формам. Если у форм одного слова статусы
+  // разные, остаётся самый осторожный: не знаю > средне > знаю.
+  function adoptStatuses(raw) {
+    const out = {}, changes = {};
+    Object.keys(raw).forEach((word) => {
+      if (!raw[word]) return;
+      const lemma = lemmaOf[word] || word;
+      out[lemma] = Math.max(out[lemma] || 0, raw[word]);
+      if (lemma !== word) changes[word] = NONE;
+    });
+    Object.keys(changes).forEach((word) => {
+      const lemma = lemmaOf[word];
+      if (!out[word]) changes[lemma] = out[lemma];
+    });
+    if (Object.keys(changes).length) env.store.setWords(changes);
+    return out;
+  }
+
+  function load() {
+    Object.assign(state, env.store.settings());
+    state.filters = (state.filters || []).filter((s) => s !== NONE);
+    state.position = env.store.position(book.id);
+    state.statuses = adoptStatuses(env.store.words());
+  }
+
+  function save() {
+    env.store.saveSettings({
+      speed: state.speed, stopAfter: state.stopAfter, sort: state.sort, filters: state.filters,
+      textScale: state.textScale, book: book.id,
+    });
+  }
+
+  function savePosition(durable) {
+    env.store.savePosition(book.id, state.position, durable);
+  }
+
+  // Слово, которое ещё не отмечали, считается незнакомым
+  const statusOf = (v) => state.statuses[book.vocab[v]] || UNKNOWN;
+
+  /* ---------- Поиск по времени ---------- */
+
+  function tokenAt(t) {
+    let lo = 0, hi = times.length - 1, found = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (times[mid] <= t) { found = mid; lo = mid + 1; } else { hi = mid - 1; }
+    }
+    return found;
+  }
+
+  function sentenceOfToken(i) {
+    let lo = 0, hi = starts.length - 1, found = 0;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (starts[mid] <= i) { found = mid; lo = mid + 1; } else { hi = mid - 1; }
+    }
+    return found;
+  }
+
+  const sentenceAt = (t) => sentenceOfToken(Math.max(tokenAt(t), 0));
+  const sentenceStart = (s) => times[starts[s]];
+
+  /* ---------- Отрисовка текста ---------- */
+
+  function renderText() {
+    const root = $("text");
+    const frag = document.createDocumentFragment();
+    let paragraph = null;
+    starts.forEach((start, s) => {
+      if (s % book.sentencesPerParagraph === 0) {
+        paragraph = document.createElement("p");
+        frag.appendChild(paragraph);
+      }
+      const end = s + 1 < starts.length ? starts[s + 1] : book.tokens.length;
+      const sentence = document.createElement("span");
+      sentence.className = "sent";
+      sentence.dataset.s = s;
+      for (let i = start; i < end; i++) {
+        const span = document.createElement("span");
+        span.textContent = book.tokens[i];
+        span.dataset.i = i;
+        const v = book.tokenVocab[i];
+        span.className = "w";
+        if (v >= 0) {
+          wordSpans[v].push(span);
+          const st = statusOf(v);
+          if (st) span.classList.add(STATUS_CLASSES[st]);
+        }
+        tokenSpans[i] = span;
+        sentence.appendChild(span);
+        sentence.appendChild(document.createTextNode(" "));
+      }
+      sentenceEls[s] = sentence;
+      paragraph.appendChild(sentence);
+    });
+    root.appendChild(frag);
+  }
+
+  function setCurrent(token) {
+    if (token === currentToken) return;
+    if (currentToken >= 0) tokenSpans[currentToken].classList.remove("on");
+    currentToken = token;
+    if (token >= 0) tokenSpans[token].classList.add("on");
+
+    const s = sentenceOfToken(Math.max(token, 0));
+    if (s !== currentSentence || !sentenceEls[s].classList.contains("cur")) {
+      sentenceEls[currentSentence].classList.remove("cur");
+      currentSentence = s;
+      sentenceEls[s].classList.add("cur");
+      $("position").textContent = "Предложение " + (s + 1) + " из " + starts.length;
+      if (follow && $("pop").hidden) scrollToCurrent();
+      if ($("onlySentence").checked) renderList();
+    }
+  }
+
+  function scrollToCurrent(force) {
+    const el = sentenceEls[currentSentence];
+    const box = $("text").getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    if (!force && r.top >= box.top + box.height * 0.1 && r.bottom <= box.top + box.height * 0.6) return;
+    // Плавно только рядом: далёкий переход должен быть мгновенным, абзацы вне экрана ещё не измерены
+    const near = !force && Math.abs(r.top - box.top) < box.height * 1.5;
+    el.scrollIntoView({ block: "center", behavior: near ? "smooth" : "auto" });
+    if (!near) requestAnimationFrame(() => el.scrollIntoView({ block: "center" }));
+  }
+
+  function setFollow(on) {
+    follow = on;
+    $("followBtn").hidden = on;
+    if (on) scrollToCurrent(true);
+  }
+
+  /* ---------- Плеер ---------- */
+
+  // iPad иногда не принимает перемотку сразу после загрузки: повторяем её, пока не сработает
+  let restoreAt = null;
+
+  function seekTo(t, keepBound) {
+    restoreAt = null;
+    const max = isFinite(audio.duration) ? audio.duration : t;
+    audio.currentTime = Math.min(Math.max(t, 0), max);
+    if (!keepBound) boundSentence = sentenceAt(audio.currentTime + SENTENCE_END_MARGIN);
+    tick();
+  }
+
+  function goSentence(s, play) {
+    const target = Math.min(Math.max(s, 0), starts.length - 1);
+    seekTo(sentenceStart(target));
+    boundSentence = target;
+    setCurrent(starts[target]);
+    if (!follow) setFollow(true);
+    if (play) audio.play();
+  }
+
+  function togglePlay() {
+    if (audio.paused) audio.play(); else audio.pause();
+  }
+
+  function tick() {
+    const t = audio.currentTime;
+    setCurrent(tokenAt(t));
+
+    if (!audio.paused && !seeking) {
+      const ahead = sentenceAt(t + SENTENCE_END_MARGIN);
+      if (ahead === boundSentence + 1) {
+        if (loopSentence) {
+          seekTo(sentenceStart(boundSentence), true);
+        } else if (state.stopAfter) {
+          audio.pause();
+          boundSentence = ahead;
+          seekTo(sentenceStart(ahead));
+        } else {
+          boundSentence = ahead;
+        }
+      } else if (ahead !== boundSentence) {
+        boundSentence = ahead;
+      }
+    }
+
+    if (!seeking && isFinite(audio.duration) && audio.duration > 0) {
+      $("seek").value = String(Math.round((t / audio.duration) * 1000));
+    }
+    $("timeNow").textContent = formatTime(t);
+  }
+
+  function animate() {
+    if (!audio.paused) tick();
+    requestAnimationFrame(animate);
+  }
+
+  function formatTime(sec) {
+    const s = Math.floor(sec || 0);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    const mm = h ? String(m).padStart(2, "0") : String(m);
+    return (h ? h + ":" : "") + mm + ":" + String(r).padStart(2, "0");
+  }
+
+  function setSpeed(value) {
+    state.speed = value;
+    audio.playbackRate = value;
+    $("speed").textContent = value + "×";
+    save();
+  }
+
+  function stepSpeed(dir) {
+    let i = SPEEDS.indexOf(state.speed);
+    if (i < 0) i = SPEEDS.indexOf(1);
+    setSpeed(SPEEDS[Math.min(Math.max(i + dir, 0), SPEEDS.length - 1)]);
+  }
+
+  function setTextScale(value) {
+    state.textScale = value;
+    document.documentElement.style.setProperty("--text-scale", String(value));
+    $("textSize").textContent = Math.round(value * 100) + "%";
+    clearSelection();
+    if (follow) scrollToCurrent(true);
+    save();
+  }
+
+  function stepTextScale(dir) {
+    let i = TEXT_SCALES.indexOf(state.textScale);
+    if (i < 0) i = TEXT_SCALES.indexOf(1);
+    setTextScale(TEXT_SCALES[Math.min(Math.max(i + dir, 0), TEXT_SCALES.length - 1)]);
+  }
+
+  function setLoop(on) {
+    loopSentence = on;
+    boundSentence = currentSentence;
+    $("loopBtn").setAttribute("aria-pressed", String(on));
+  }
+
+  function setStopAfter(on) {
+    state.stopAfter = on;
+    boundSentence = currentSentence;
+    $("stopBtn").setAttribute("aria-pressed", String(on));
+    save();
+  }
+
+  /* ---------- Статусы слов ---------- */
+
+  function setStatus(v, status) {
+    const word = book.vocab[v];
+    state.statuses[word] = status;
+    applyStatus(v);
+    renderStats();
+    env.store.setWord(word, status);
+  }
+
+  function applyStatus(v) {
+    const st = statusOf(v);
+    wordSpans[v].forEach((span) => {
+      span.classList.remove("st-1", "st-2", "st-3");
+      if (st) span.classList.add(STATUS_CLASSES[st]);
+    });
+    const row = $("list").querySelector('[data-v="' + v + '"]');
+    if (row) paintRow(row, st);
+    if (v === selected) paintPop();
+  }
+
+  function renderStats() {
+    const n = [0, 0, 0, 0];
+    let knownTokens = 0, mediumTokens = 0;
+    book.vocab.forEach((_, v) => {
+      const st = statusOf(v);
+      n[st]++;
+      if (st === KNOWN) knownTokens += vocabCount[v];
+      if (st === MEDIUM) mediumTokens += vocabCount[v];
+    });
+    const total = book.vocab.length;
+    $("nAll").textContent = total;
+    $("n1").textContent = n[KNOWN];
+    $("n2").textContent = n[MEDIUM];
+    $("n3").textContent = n[UNKNOWN];
+    $("bar1").style.width = (n[KNOWN] / total) * 100 + "%";
+    $("bar2").style.width = (n[MEDIUM] / total) * 100 + "%";
+    $("bar3").style.width = (n[UNKNOWN] / total) * 100 + "%";
+    const known = (knownTokens / tokenCountTotal) * 100;
+    const medium = (mediumTokens / tokenCountTotal) * 100;
+    $("coverage").textContent =
+      "В тексте книги: знаю " + known.toFixed(1) + "% слов, средне " + medium.toFixed(1) + "%";
+  }
+
+  /* ---------- Список слов ---------- */
+
+  function sentenceVocab(s) {
+    const end = s + 1 < starts.length ? starts[s + 1] : book.tokens.length;
+    const seen = new Set();
+    for (let i = starts[s]; i < end; i++) {
+      if (book.tokenVocab[i] >= 0) seen.add(book.tokenVocab[i]);
+    }
+    return seen;
+  }
+
+  function visibleVocab() {
+    const query = $("search").value.trim().toLowerCase();
+    const inSentence = $("onlySentence").checked ? sentenceVocab(currentSentence) : null;
+    const out = [];
+    book.vocab.forEach((word, v) => {
+      if (state.filters.length && !state.filters.includes(statusOf(v))) return;
+      if (inSentence && !inSentence.has(v)) return;
+      if (query && !book.forms[v].some((form) => form.includes(query)) && !word.includes(query)) return;
+      out.push(v);
+    });
+    if (state.sort === "alpha") out.sort((a, b) => book.vocab[a].localeCompare(book.vocab[b], "en"));
+    if (state.sort === "first") out.sort((a, b) => vocabFirst[a] - vocabFirst[b]);
+    return out; // словарь уже отсортирован по частоте
+  }
+
+  function paintRow(row, st) {
+    row.classList.remove("st-1", "st-2", "st-3");
+    if (st) row.classList.add(STATUS_CLASSES[st]);
+    row.querySelectorAll(".dots button").forEach((b) => {
+      b.classList.toggle("is", Number(b.dataset.set) === st);
+    });
+  }
+
+  function otherForms(v, prefix) {
+    const others = book.forms[v].filter((form) => form !== book.vocab[v]);
+    return others.length ? prefix + others.join(", ") : "";
+  }
+
+  function buildRow(v) {
+    const li = document.createElement("li");
+    li.className = "row";
+    li.dataset.v = v;
+    if (v === selected) li.classList.add("sel");
+
+    const word = document.createElement("button");
+    word.type = "button";
+    word.className = "row-word";
+    word.title = "Показать перевод и следующее место, где встречается это слово";
+    word.textContent = book.vocab[v];
+    const count = document.createElement("small");
+    count.textContent = "×" + vocabCount[v] + otherForms(v, " · ");
+    word.appendChild(count);
+    li.appendChild(word);
+
+    const dots = document.createElement("span");
+    dots.className = "dots";
+    [["3", "?", "Не знаю"], ["2", "~", "Средне"], ["1", "✓", "Знаю"]].forEach(([set, mark, label]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "st-" + set;
+      b.dataset.set = set;
+      b.textContent = mark;
+      b.title = label;
+      b.setAttribute("aria-label", label + ": " + book.vocab[v]);
+      dots.appendChild(b);
+    });
+    li.appendChild(dots);
+    paintRow(li, statusOf(v));
+    return li;
+  }
+
+  function renderList() {
+    const list = $("list");
+    const frag = document.createDocumentFragment();
+    const items = visibleVocab();
+    items.forEach((v) => frag.appendChild(buildRow(v)));
+    list.textContent = "";
+    list.appendChild(frag);
+    $("empty").hidden = items.length > 0;
+    document.querySelectorAll("#filters button").forEach((b) => {
+      const active = b.dataset.filter === "all"
+        ? state.filters.length === 0
+        : state.filters.includes(Number(b.dataset.filter));
+      b.setAttribute("aria-pressed", String(active));
+    });
+  }
+
+  // Следующее после текущей позиции вхождение слова (по кругу)
+  function nextOccurrence(v) {
+    const spans = wordSpans[v];
+    const from = Math.max(currentToken, selectedToken);
+    for (const span of spans) {
+      if (Number(span.dataset.i) > from) return Number(span.dataset.i);
+    }
+    return Number(spans[0].dataset.i);
+  }
+
+  /* ---------- Выбранное слово и всплывающее окно ---------- */
+
+  function selectWord(v, token) {
+    clearSelection();
+    selected = v;
+    selectedToken = token;
+    if (token >= 0) tokenSpans[token].classList.add("sel");
+    const row = $("list").querySelector('[data-v="' + v + '"]');
+    if (row) row.classList.add("sel");
+  }
+
+  function clearSelection() {
+    if (selectedToken >= 0) tokenSpans[selectedToken].classList.remove("sel");
+    const row = selected >= 0 && $("list").querySelector('[data-v="' + selected + '"]');
+    if (row) row.classList.remove("sel");
+    selected = -1;
+    selectedToken = -1;
+    $("pop").hidden = true;
+  }
+
+  function paintPop() {
+    const st = statusOf(selected);
+    $("pop").querySelectorAll("[data-set]").forEach((b) => {
+      b.classList.toggle("is", Number(b.dataset.set) === st);
+    });
+  }
+
+  function openPop(v, token) {
+    selectWord(v, token);
+    const pop = $("pop");
+    $("popWord").textContent = book.vocab[v];
+    $("popCount").textContent = "в тексте: " + vocabCount[v];
+    $("popForms").textContent = otherForms(v, "формы: ");
+    $("popTranslation").textContent = window.DICTIONARY[book.vocab[v]] || "Перевода пока нет";
+    paintPop();
+    pop.hidden = false;
+    placePop(token);
+  }
+
+  function placePop(token) {
+    const pop = $("pop");
+    const r = tokenSpans[token].getBoundingClientRect();
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    const left = Math.min(Math.max(r.left, 8), window.innerWidth - w - 8);
+    const below = r.bottom + 6;
+    const top = below + h < window.innerHeight - 8 ? below : Math.max(r.top - h - 6, 8);
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+  }
+
+  /* ---------- Экспорт и импорт ---------- */
+
+  function exportStatuses() {
+    const backup = { statuses: env.store.words() };
+    if (env.store.positions) {
+      state.position = audio.currentTime || state.position;
+      savePosition(true);
+      backup.positions = env.store.positions();
+    }
+    env.saveFile("статусы слов.json", JSON.stringify(backup, null, 1));
+  }
+
+  function showNotice(text) {
+    $("saveWarning").textContent = text;
+    $("saveWarning").hidden = !text;
+  }
+
+  // Статусы изменились извне (импорт или другое устройство)
+  function applyRemote(raw) {
+    const next = adoptStatuses(raw);
+    const changed = book.vocab.reduce((list, word, v) => {
+      if ((next[word] || UNKNOWN) !== statusOf(v)) list.push(v);
+      return list;
+    }, []);
+    state.statuses = next;
+    changed.forEach(applyStatus);
+    if (changed.length) renderStats();
+  }
+
+  // Позиции из резервной копии берём только для книг, где позиции на устройстве нет
+  function restorePositions(positions) {
+    if (!positions || typeof positions !== "object") return;
+    Object.keys(positions).forEach((id) => {
+      const seconds = Number(positions[id]);
+      if (!(seconds > 0) || env.store.position(id) > 0) return;
+      env.store.savePosition(id, seconds, true);
+      if (id === book.id && !(audio.currentTime > 1)) {
+        state.position = seconds;
+        if (audio.readyState) seekTo(seconds);
+      }
+    });
+  }
+
+  function importStatuses(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        // Импорт дополняет словарь и не стирает слова, которых нет в файле
+        const incoming = JSON.parse(reader.result).statuses;
+        const clean = {};
+        Object.keys(incoming).forEach((word) => {
+          if ([KNOWN, MEDIUM, UNKNOWN].includes(incoming[word])) clean[word] = incoming[word];
+        });
+        env.store.setWords(clean);
+        applyRemote(env.store.words());
+        restorePositions(JSON.parse(reader.result).positions);
+        renderList();
+        showNotice("Статусы загружены из файла: " + Object.keys(clean).length);
+      } catch (e) {
+        showNotice("Не удалось прочитать файл со статусами");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- События ---------- */
+
+  function bind() {
+    audio.addEventListener("loadedmetadata", () => {
+      $("timeAll").textContent = formatTime(audio.duration);
+      if (state.position > 0 && state.position < audio.duration) {
+        seekTo(state.position);
+        restoreAt = state.position;
+      }
+      audio.playbackRate = state.speed;
+    });
+    audio.addEventListener("error", () => {
+      if (env.onAudioError && env.onAudioError()) return;
+      showNotice("Браузер не смог открыть аудиофайл. Статусы при этом не пострадали.");
+    });
+    audio.addEventListener("timeupdate", () => {
+      if (restoreAt !== null) {
+        if (Math.abs(audio.currentTime - restoreAt) > 2) {
+          if (!audio.seeking) audio.currentTime = restoreAt;
+          return;
+        }
+        restoreAt = null;
+      }
+      tick();
+      state.position = audio.currentTime;
+      savePosition(false);
+    });
+    audio.addEventListener("play", () => {
+      $("playBtn").textContent = "⏸";
+      $("playBtn").setAttribute("aria-label", "Пауза");
+      boundSentence = sentenceAt(audio.currentTime + SENTENCE_END_MARGIN);
+    });
+    audio.addEventListener("pause", () => {
+      $("playBtn").textContent = "▶";
+      $("playBtn").setAttribute("aria-label", "Воспроизведение");
+      if (restoreAt !== null) return;
+      state.position = audio.currentTime;
+      savePosition(true);
+    });
+    window.addEventListener("pagehide", () => {
+      if (!audio.readyState || restoreAt !== null) return; // аудио ещё не встало на место, позицию не трогаем
+      state.position = audio.currentTime;
+      savePosition(true);
+    });
+    env.store.onWordsChanged(applyRemote);
+    env.store.onNotice(showNotice);
+
+    $("playBtn").addEventListener("click", togglePlay);
+    $("prevBtn").addEventListener("click", () => goSentence(currentSentence - 1));
+    $("nextBtn").addEventListener("click", () => goSentence(currentSentence + 1));
+    $("back5Btn").addEventListener("click", () => seekTo(audio.currentTime - 5));
+    $("fwd5Btn").addEventListener("click", () => seekTo(audio.currentTime + 5));
+    $("repeatBtn").addEventListener("click", () => goSentence(currentSentence, true));
+    $("loopBtn").addEventListener("click", () => setLoop(!loopSentence));
+    $("stopBtn").addEventListener("click", () => setStopAfter(!state.stopAfter));
+    $("slowerBtn").addEventListener("click", () => stepSpeed(-1));
+    $("fasterBtn").addEventListener("click", () => stepSpeed(1));
+
+    const seek = $("seek");
+    seek.addEventListener("input", () => {
+      seeking = true;
+      $("timeNow").textContent = formatTime((seek.value / 1000) * (audio.duration || 0));
+    });
+    seek.addEventListener("change", () => {
+      seeking = false;
+      seekTo((seek.value / 1000) * (audio.duration || 0));
+    });
+
+    // Клик по слову: окно статуса. Клик по промежутку в предложении: переход к нему.
+    $("text").addEventListener("click", (e) => {
+      const span = e.target.closest(".w");
+      if (span) {
+        const i = Number(span.dataset.i);
+        const v = book.tokenVocab[i];
+        if (v >= 0) { openPop(v, i); e.stopPropagation(); return; }
+      }
+      const sentence = e.target.closest(".sent");
+      if (sentence) goSentence(Number(sentence.dataset.s));
+    });
+
+    // Окно слова идёт за словом: абзацы вне экрана при измерении сдвигают текст
+    $("text").addEventListener("scroll", () => {
+      if (!$("pop").hidden) placePop(selectedToken);
+    }, { passive: true });
+
+    // Автопрокрутку отключает только прокрутка самим пользователем
+    const onManualScroll = () => {
+      clearSelection();
+      if (follow) setFollow(false);
+    };
+    $("text").addEventListener("wheel", onManualScroll, { passive: true });
+    $("text").addEventListener("touchmove", onManualScroll, { passive: true });
+    $("text").addEventListener("pointerdown", (e) => {
+      if (e.target === $("text")) onManualScroll(); // ползунок прокрутки
+    });
+    $("followBtn").addEventListener("click", () => setFollow(true));
+
+    $("pop").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const b = e.target.closest("[data-set]");
+      if (b && selected >= 0) setStatus(selected, Number(b.dataset.set));
+    });
+    $("popPlay").addEventListener("click", () => {
+      const token = selectedToken;
+      clearSelection();
+      seekTo(times[token]);
+      setFollow(true);
+      audio.play();
+    });
+    document.addEventListener("click", (e) => {
+      if (!$("pop").hidden && !e.target.closest(".row")) clearSelection();
+    });
+
+    $("list").addEventListener("click", (e) => {
+      const row = e.target.closest(".row");
+      if (!row) return;
+      const v = Number(row.dataset.v);
+      const set = e.target.closest("[data-set]");
+      if (set) {
+        setStatus(v, Number(set.dataset.set));
+        return;
+      }
+      if (e.target.closest(".row-word")) {
+        const token = nextOccurrence(v);
+        follow = false;
+        $("followBtn").hidden = false;
+        tokenSpans[token].scrollIntoView({ block: "center" });
+        openPop(v, token);
+        setTimeout(() => {
+          if (selectedToken === token && !$("pop").hidden) placePop(token);
+        }, 300);
+        e.stopPropagation();
+      }
+    });
+
+    $("filters").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-filter]");
+      if (!b) return;
+      if (b.dataset.filter === "all") {
+        state.filters = [];
+      } else {
+        const status = Number(b.dataset.filter);
+        state.filters = state.filters.includes(status)
+          ? state.filters.filter((s) => s !== status)
+          : state.filters.concat(status);
+      }
+      save();
+      renderList();
+    });
+    $("search").addEventListener("input", renderList);
+    $("onlySentence").addEventListener("change", renderList);
+    $("sort").addEventListener("change", (e) => {
+      state.sort = e.target.value;
+      save();
+      renderList();
+    });
+    $("markRest").addEventListener("click", () => {
+      sentenceVocab(currentSentence).forEach((v) => {
+        if (!state.statuses[book.vocab[v]]) setStatus(v, KNOWN);
+      });
+      if (state.filters.length) renderList();
+    });
+
+    $("bookSelect").addEventListener("change", (e) => env.selectBook(e.target.value));
+    if (env.addBook) {
+      $("addBookBtn").hidden = false;
+      $("addBookBtn").addEventListener("click", env.addBook);
+    }
+
+    $("smallerTextBtn").addEventListener("click", () => stepTextScale(-1));
+    $("largerTextBtn").addEventListener("click", () => stepTextScale(1));
+    $("exportBtn").addEventListener("click", exportStatuses);
+    $("importBtn").addEventListener("click", () => $("importFile").click());
+    $("importFile").addEventListener("change", (e) => {
+      if (e.target.files[0]) importStatuses(e.target.files[0]);
+      e.target.value = "";
+    });
+
+    // Кнопки не должны перехватывать пробел и стрелки после клика
+    document.addEventListener("click", (e) => {
+      const control = e.target.closest("button, input[type=range], input[type=checkbox]");
+      if (control) control.blur();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      const tag = e.target.tagName;
+      if (tag === "INPUT" && e.target.type === "search") {
+        if (e.key === "Escape") { e.target.value = ""; renderList(); e.target.blur(); }
+        return;
+      }
+      if (tag === "SELECT" || e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const actions = {
+        " ": togglePlay,
+        ArrowLeft: () => (e.shiftKey ? seekTo(audio.currentTime - 5) : goSentence(currentSentence - 1)),
+        ArrowRight: () => (e.shiftKey ? seekTo(audio.currentTime + 5) : goSentence(currentSentence + 1)),
+        r: () => goSentence(currentSentence, true),
+        l: () => setLoop(!loopSentence),
+        p: () => setStopAfter(!state.stopAfter),
+        "[": () => stepSpeed(-1),
+        "]": () => stepSpeed(1),
+        "-": () => stepTextScale(-1),
+        "=": () => stepTextScale(1),
+        "+": () => stepTextScale(1),
+        "/": () => $("search").focus(),
+        Escape: clearSelection,
+      };
+      if (selected >= 0) {
+        actions["1"] = () => setStatus(selected, KNOWN);
+        actions["2"] = () => setStatus(selected, MEDIUM);
+        actions["3"] = () => setStatus(selected, UNKNOWN);
+      }
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (actions[key]) {
+        e.preventDefault();
+        actions[key]();
+      }
+    });
+  }
+
+  /* ---------- Запуск ---------- */
+
+  load();
+  $("title").textContent = book.title;
+  if (env.books.length > 1) {
+    const select = $("bookSelect");
+    env.books.forEach((b) => select.add(new Option(b.title, b.id, false, b.id === book.id)));
+    select.hidden = false;
+    $("title").hidden = true;
+  }
+  document.title = book.title;
+  renderText();
+  renderStats();
+  $("sort").value = state.sort;
+  renderList();
+  bind();
+  setSpeed(state.speed);
+  setStopAfter(state.stopAfter);
+  setCurrent(0);
+  setTextScale(state.textScale);
+  sentenceEls[0].classList.add("cur");
+  $("position").textContent = "Предложение 1 из " + starts.length;
+  audio.src = env.audioSrc;
+  requestAnimationFrame(animate);
+};
+
+// Приложение на экране «Домой»: книги, статусы и позиция хранятся только на этом устройстве
+(function () {
+  const BACKUP_KEY = "audio-english:lastBackup";
+  const CHANGED_KEY = "audio-english:changedSinceBackup";
+  const BACKUP_EVERY_MS = 3 * 24 * 3600 * 1000;
+  const STATUSES = [1, 2, 3];
+
+  /* ---------- Книги на устройстве ---------- */
+
+  function openLibrary() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("audio-english", 2);
+      request.onupgradeneeded = () => {
+        const idb = request.result;
+        if (!idb.objectStoreNames.contains("books")) idb.createObjectStore("books", { keyPath: "id" });
+        if (!idb.objectStoreNames.contains("chunks")) idb.createObjectStore("chunks");
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function libraryCall(mode, call, stores) {
+    return openLibrary().then((idb) => new Promise((resolve, reject) => {
+      const tx = idb.transaction(stores || "books", mode);
+      const request = call(stores ? tx : tx.objectStore("books"));
+      tx.oncomplete = () => resolve(request.result);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    }));
+  }
+
+  const listBooks = () => libraryCall("readonly", (books) => books.getAllKeys());
+  const getBook = (id) => libraryCall("readonly", (books) => books.get(id));
+
+  // Safari иногда портит сохранённые Blob, а слишком большую запись браузер не примет,
+  // поэтому аудио хранится кусками по 8 МБ в виде массивов байтов
+  const CHUNK = 8 * 1024 * 1024;
+  const chunkKey = (id, i) => id + ":" + i;
+
+  async function putBook(record) {
+    const size = record.audio.size;
+    const count = Math.ceil(size / CHUNK);
+    for (let i = 0; i < count; i++) {
+      const bytes = await record.audio.slice(i * CHUNK, (i + 1) * CHUNK).arrayBuffer();
+      await libraryCall("readwrite", (tx) => tx.objectStore("chunks").put(bytes, chunkKey(record.id, i)), ["chunks"]);
+    }
+    return libraryCall("readwrite", (books) => books.put({ id: record.id, title: record.title, data: record.data, chunks: count, size }));
+  }
+
+  async function loadBook(id) {
+    const raw = await getBook(id);
+    if (!raw || !raw.chunks) return null;
+    const parts = [];
+    for (let i = 0; i < raw.chunks; i++) {
+      const bytes = await libraryCall("readonly", (tx) => tx.objectStore("chunks").get(chunkKey(id, i)), ["chunks"]);
+      if (!bytes) return null;
+      parts.push(bytes);
+    }
+    const audio = new Blob(parts, { type: "audio/mp4" });
+    return audio.size === raw.size ? { id: raw.id, title: raw.title, data: raw.data, audio } : null;
+  }
+
+  function isBookData(data) {
+    return data && typeof data.id === "string" && typeof data.title === "string"
+      && ["tokens", "times", "sentenceStarts", "vocab", "forms", "tokenVocab"].every((k) => Array.isArray(data[k]));
+  }
+
+  /* ---------- Резервная копия ---------- */
+
+  // Файл «статусы слов.json» дополняет словарь; позицию берём только там, где её на устройстве нет
+  function applyBackup(local, backup) {
+    const clean = {};
+    Object.keys(backup.statuses || {}).forEach((word) => {
+      if (STATUSES.includes(backup.statuses[word])) clean[word] = backup.statuses[word];
+    });
+    local.setWords(clean);
+    // Только что взятые из копии статусы новой копии не требуют
+    local.write(BACKUP_KEY, Date.now());
+    local.write(CHANGED_KEY, false);
+    const positions = backup.positions || {};
+    Object.keys(positions).forEach((id) => {
+      const seconds = Number(positions[id]);
+      if (seconds > 0 && !(local.position(id) > 0)) local.savePosition(id, seconds);
+    });
+    return Object.keys(clean).length;
+  }
+
+  function saveFile(local, filename, text) {
+    const file = new File([text], filename, { type: "application/json" });
+    const done = () => {
+      local.write(BACKUP_KEY, Date.now());
+      local.write(CHANGED_KEY, false);
+      local.notify("");
+    };
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      // На iPad откроется меню «Поделиться»: там выберите «Сохранить в Файлы»
+      return navigator.share({ files: [file] }).then(done).catch(() => {});
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file);
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    done();
+    return Promise.resolve();
+  }
+
+  function remindBackup(local) {
+    const last = local.read(BACKUP_KEY) || 0;
+    if (local.read(CHANGED_KEY) && Date.now() - last > BACKUP_EVERY_MS) {
+      local.notify("Давно не было резервной копии. Нажмите «Экспорт» и сохраните файл в «Файлы».");
+    }
+  }
+
+  /* ---------- Экран выбора файлов ---------- */
+
+  function showPicker(local, onReady, options) {
+    const box = document.createElement("div");
+    box.className = "library";
+    box.innerHTML = '<div class="library-card">'
+      + '<h2 id="libTitle"></h2><p id="libIntro"></p>'
+      + "<ol><li>Аудио с расширением .m4a</li><li>Текст с расширением .book.json</li>"
+      + "<li>По желанию: резервная копия «статусы слов.json», она вернёт статусы и место, где вы остановились</li></ol>"
+      + '<ul class="library-files"><li id="libAudio">Аудио: не выбрано</li><li id="libText">Текст: не выбран</li>'
+      + '<li id="libBackup">Резервная копия: не выбрана</li></ul>'
+      + '<label class="library-pick" role="button" tabindex="0">Выбрать файлы'
+      + '<input id="libFiles" type="file" multiple hidden></label>'
+      + '<p id="libStatus" class="library-error" hidden></p>'
+      + (options.canClose ? '<button id="libClose" type="button">Закрыть</button>' : "")
+      + "<p>Файлы можно выбрать все сразу или по одному. Книга останется в приложении, повторно выбирать её не нужно.</p>"
+      + "</div>";
+    box.querySelector("#libTitle").textContent = options.title;
+    box.querySelector("#libIntro").textContent = options.intro;
+    document.body.appendChild(box);
+
+    const picked = { audio: null, data: null };
+    const status = box.querySelector("#libStatus");
+    const say = (text) => {
+      status.textContent = text;
+      status.hidden = !text;
+    };
+    const mark = (id, text) => {
+      const line = box.querySelector(id);
+      line.textContent = text;
+      line.className = "ok";
+    };
+
+    if (options.canClose) box.querySelector("#libClose").addEventListener("click", () => box.remove());
+
+    box.querySelector("#libFiles").addEventListener("change", async (e) => {
+      say("");
+      for (const file of e.target.files) {
+        if (/\.json$/i.test(file.name)) {
+          try {
+            const data = JSON.parse(await file.text());
+            if (isBookData(data)) {
+              picked.data = data;
+              mark("#libText", "Текст: " + data.title);
+            } else if (data && data.statuses && typeof data.statuses === "object") {
+              mark("#libBackup", "Резервная копия: статусов " + applyBackup(local, data));
+            } else {
+              throw new Error("unknown json");
+            }
+          } catch (err) {
+            say("Файл " + file.name + " не похож ни на текст книги, ни на резервную копию.");
+          }
+        } else {
+          picked.audio = file;
+          mark("#libAudio", "Аудио: " + file.name);
+        }
+      }
+      e.target.value = "";
+      if (!picked.audio || !picked.data) return;
+
+      say("Сохраняю книгу в приложении…");
+      const record = {
+        id: picked.data.id, title: picked.data.title, data: picked.data,
+        audio: new Blob([picked.audio], { type: "audio/mp4" }),
+      };
+      let saved = true;
+      try {
+        await putBook(record);
+      } catch (err) {
+        saved = false;
+      }
+      box.remove();
+      onReady(record, saved);
+    });
+  }
+
+  /* ---------- Запуск ---------- */
+
+  async function boot() {
+    const local = window.createLocalStore();
+    const remember = (id) => local.saveSettings(Object.assign(local.settings(), { book: id }));
+    const reload = () => location.reload();
+
+    // Просим iPad не стирать данные приложения; для приложения на экране «Домой» он обычно соглашается
+    try {
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    } catch (e) { /* без этого тоже работает */ }
+
+    // Отсчёт до первого напоминания идёт с первого запуска
+    if (!local.read(BACKUP_KEY)) local.write(BACKUP_KEY, Date.now());
+
+    // Любое изменение статуса — повод позже напомнить о резервной копии
+    const setWords = local.setWords.bind(local);
+    local.setWords = function (changes) {
+      setWords(changes);
+      local.write(CHANGED_KEY, true);
+    };
+
+    let ids = [];
+    try {
+      ids = await listBooks();
+    } catch (e) {
+      ids = [];
+    }
+
+    const describe = async (list) => {
+      const books = [];
+      for (const id of list) {
+        const raw = await getBook(id);
+        if (raw && raw.chunks) books.push({ id, title: raw.title });
+      }
+      return books;
+    };
+
+    const start = (record, books, savedOnDevice) => {
+      window.startAudioEnglish(record.data, {
+        store: local,
+        audioSrc: URL.createObjectURL(record.audio),
+        books,
+        saveFile: (filename, text) => saveFile(local, filename, text),
+        selectBook(id) {
+          remember(id);
+          reload();
+        },
+        addBook() {
+          showPicker(local, (added, saved) => {
+            remember(added.id);
+            if (saved) reload();
+            else local.notify("Устройство не сохранило новую книгу: не хватает места.");
+          }, { canClose: true, title: "Добавить книгу", intro: "Выберите файлы новой книги." });
+        },
+      });
+      if (!savedOnDevice) local.notify("Книга не сохранилась в приложении: не хватает места. В следующий раз выберите файлы снова.");
+      else remindBackup(local);
+    };
+
+    const chosen = local.settings().book;
+    const wanted = ids.includes(chosen) ? chosen : ids[ids.length - 1];
+    let record = null;
+    if (wanted) {
+      try {
+        record = await loadBook(wanted);
+      } catch (e) {
+        record = null;
+      }
+    }
+    if (record) {
+      start(record, await describe(ids), true);
+      return;
+    }
+
+    const wiped = !!local.settings().book;
+    showPicker(local, async (added, saved) => {
+      remember(added.id);
+      let books = [{ id: added.id, title: added.title }];
+      if (saved) {
+        try {
+          books = await describe(await listBooks());
+        } catch (e) { /* оставляем одну книгу */ }
+      }
+      start(added, books, saved);
+    }, wiped ? {
+      title: "Выберите книгу снова",
+      intro: "iPad убрал книгу из приложения. Выберите её файлы ещё раз. Статусы и место сохранились.",
+    } : {
+      title: "Добавьте книгу",
+      intro: "Выберите файлы книги в «Файлах». Чтобы перенести статусы и место из прежней версии, добавьте и файл «статусы слов.json».",
+    });
+  }
+
+  // Код приложения сохраняется на устройстве, поэтому оно открывается и без интернета
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
