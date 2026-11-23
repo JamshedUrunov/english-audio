@@ -278,6 +278,13 @@ button[aria-pressed="true"] {
 .status-buttons .st-3.is { background: var(--unknown-bg); border-color: var(--unknown); }
 .pop-play { width: 100%; margin-top: 6px; }
 
+/* Кнопка «Обновить» появляется, когда скачана новая версия приложения */
+.update-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.update-btn:hover { background: var(--accent); filter: brightness(1.1); }
+
+/* Книга без аудио: плеер не нужен */
+.text-only .player { display: none; }
+
 /* Плеер */
 .player {
   padding-block: 8px 10px;
@@ -557,6 +564,8 @@ window.startAudioEnglish = function (book, env) {
 
   const audio = $("audio");
   const times = book.times.map((ms) => ms / 1000);
+  // Книга без аудио: только текст, место чтения — номер предложения вверху экрана
+  const textOnly = !!book.noAudio || !times.length;
   const starts = book.sentenceStarts;
 
   // Состояние, которое переживает перезагрузку страницы
@@ -583,7 +592,7 @@ window.startAudioEnglish = function (book, env) {
   let currentSentence = 0;
   let boundSentence = 0; // фраза, конец которой отслеживают повтор и стоп-после-фразы
   let loopSentence = false;
-  let follow = true;
+  let follow = !textOnly;
   let selected = -1; // индекс слова в словаре
   let selectedToken = -1;
   let seeking = false;
@@ -657,9 +666,10 @@ window.startAudioEnglish = function (book, env) {
   function renderText() {
     const root = $("text");
     const frag = document.createDocumentFragment();
+    const paragraphStarts = book.paragraphStarts ? new Set(book.paragraphStarts) : null;
     let paragraph = null;
     starts.forEach((start, s) => {
-      if (s % book.sentencesPerParagraph === 0) {
+      if (!paragraph || (paragraphStarts ? paragraphStarts.has(s) : s % book.sentencesPerParagraph === 0)) {
         paragraph = document.createElement("p");
         frag.appendChild(paragraph);
       }
@@ -717,6 +727,7 @@ window.startAudioEnglish = function (book, env) {
   }
 
   function setFollow(on) {
+    if (textOnly) on = false;
     follow = on;
     $("followBtn").hidden = on;
     if (on) scrollToCurrent(true);
@@ -729,6 +740,7 @@ window.startAudioEnglish = function (book, env) {
 
   function seekTo(t, keepBound) {
     restoreAt = null;
+    if (textOnly) return;
     const max = isFinite(audio.duration) ? audio.duration : t;
     audio.currentTime = Math.min(Math.max(t, 0), max);
     if (!keepBound) boundSentence = sentenceAt(audio.currentTime + SENTENCE_END_MARGIN);
@@ -737,6 +749,11 @@ window.startAudioEnglish = function (book, env) {
 
   function goSentence(s, play) {
     const target = Math.min(Math.max(s, 0), starts.length - 1);
+    if (textOnly) {
+      setCurrent(starts[target]);
+      scrollToCurrent();
+      return;
+    }
     seekTo(sentenceStart(target));
     boundSentence = target;
     setCurrent(starts[target]);
@@ -745,6 +762,7 @@ window.startAudioEnglish = function (book, env) {
   }
 
   function togglePlay() {
+    if (textOnly) return;
     if (audio.paused) audio.play(); else audio.pause();
   }
 
@@ -1159,15 +1177,25 @@ window.startAudioEnglish = function (book, env) {
       if (span) {
         const i = Number(span.dataset.i);
         const v = book.tokenVocab[i];
-        if (v >= 0) { openPop(v, i); e.stopPropagation(); return; }
+        if (v >= 0) {
+          if (textOnly) setCurrent(i);
+          openPop(v, i);
+          e.stopPropagation();
+          return;
+        }
       }
       const sentence = e.target.closest(".sent");
       if (sentence) goSentence(Number(sentence.dataset.s));
     });
 
     // Окно слова идёт за словом: абзацы вне экрана при измерении сдвигают текст
+    let readTimer = null;
     $("text").addEventListener("scroll", () => {
       if (!$("pop").hidden) placePop(selectedToken);
+      if (textOnly) {
+        clearTimeout(readTimer);
+        readTimer = setTimeout(saveReadingPlace, 400);
+      }
     }, { passive: true });
 
     // Автопрокрутку отключает только прокрутка самим пользователем
@@ -1305,9 +1333,40 @@ window.startAudioEnglish = function (book, env) {
     });
   }
 
+  /* ---------- Книга без аудио ---------- */
+
+  // Предложение у верхнего края текста — то место, где читатель остановился
+  function topSentence() {
+    const box = $("text").getBoundingClientRect();
+    for (const dy of [8, 24, 48]) {
+      const el = document.elementFromPoint(box.left + box.width / 2, box.top + dy);
+      const sentence = el && el.closest(".sent");
+      if (sentence) return Number(sentence.dataset.s);
+    }
+    return -1;
+  }
+
+  function saveReadingPlace() {
+    const s = topSentence();
+    if (s < 0) return;
+    state.position = s;
+    env.store.savePosition(book.id, s, true);
+  }
+
+  function restoreReadingPlace() {
+    const s = Math.min(Math.max(Math.round(state.position) || 0, 0), starts.length - 1);
+    setCurrent(starts[s]);
+    const el = sentenceEls[s];
+    el.scrollIntoView({ block: "start" });
+    // Абзацы вне экрана измеряются при прокрутке, поэтому выравниваем ещё раз
+    requestAnimationFrame(() => el.scrollIntoView({ block: "start" }));
+  }
+
   /* ---------- Запуск ---------- */
 
   load();
+  document.body.classList.toggle("text-only", textOnly);
+  $("popPlay").hidden = textOnly;
   $("title").textContent = book.title;
   if (env.books.length > 1) {
     const select = $("bookSelect");
@@ -1327,8 +1386,12 @@ window.startAudioEnglish = function (book, env) {
   setTextScale(state.textScale);
   sentenceEls[0].classList.add("cur");
   $("position").textContent = "Предложение 1 из " + starts.length;
-  audio.src = env.audioSrc;
-  requestAnimationFrame(animate);
+  if (textOnly) {
+    restoreReadingPlace();
+  } else {
+    audio.src = env.audioSrc;
+    requestAnimationFrame(animate);
+  }
 };
 
 // Приложение на экране «Домой»: книги, статусы и позиция хранятся только на этом устройстве
@@ -1372,6 +1435,9 @@ window.startAudioEnglish = function (book, env) {
   const chunkKey = (id, i) => id + ":" + i;
 
   async function putBook(record) {
+    if (!record.audio) {
+      return libraryCall("readwrite", (books) => books.put({ id: record.id, title: record.title, data: record.data, textOnly: true }));
+    }
     const size = record.audio.size;
     const count = Math.ceil(size / CHUNK);
     for (let i = 0; i < count; i++) {
@@ -1383,6 +1449,7 @@ window.startAudioEnglish = function (book, env) {
 
   async function loadBook(id) {
     const raw = await getBook(id);
+    if (raw && raw.textOnly) return { id: raw.id, title: raw.title, data: raw.data, audio: null };
     if (!raw || !raw.chunks) return null;
     const parts = [];
     for (let i = 0; i < raw.chunks; i++) {
@@ -1453,9 +1520,9 @@ window.startAudioEnglish = function (book, env) {
     box.className = "library";
     box.innerHTML = '<div class="library-card">'
       + '<h2 id="libTitle"></h2><p id="libIntro"></p>'
-      + "<ol><li>Аудио с расширением .m4a</li><li>Текст с расширением .book.json</li>"
+      + "<ol><li>Текст с расширением .book.json</li><li>Аудио с расширением .m4a (у книги без аудио его нет)</li>"
       + "<li>По желанию: резервная копия «статусы слов.json», она вернёт статусы и место, где вы остановились</li></ol>"
-      + '<ul class="library-files"><li id="libAudio">Аудио: не выбрано</li><li id="libText">Текст: не выбран</li>'
+      + '<ul class="library-files"><li id="libText">Текст: не выбран</li><li id="libAudio">Аудио: не выбрано</li>'
       + '<li id="libBackup">Резервная копия: не выбрана</li></ul>'
       + '<label class="library-pick" role="button" tabindex="0">Выбрать файлы'
       + '<input id="libFiles" type="file" multiple hidden></label>'
@@ -1490,6 +1557,7 @@ window.startAudioEnglish = function (book, env) {
             if (isBookData(data)) {
               picked.data = data;
               mark("#libText", "Текст: " + data.title);
+              if (data.noAudio) mark("#libAudio", "Аудио: не нужно, книга без аудио");
             } else if (data && data.statuses && typeof data.statuses === "object") {
               mark("#libBackup", "Резервная копия: статусов " + applyBackup(local, data));
             } else {
@@ -1504,12 +1572,12 @@ window.startAudioEnglish = function (book, env) {
         }
       }
       e.target.value = "";
-      if (!picked.audio || !picked.data) return;
+      if (!picked.data || (!picked.audio && !picked.data.noAudio)) return;
 
       say("Сохраняю книгу в приложении…");
       const record = {
         id: picked.data.id, title: picked.data.title, data: picked.data,
-        audio: new Blob([picked.audio], { type: "audio/mp4" }),
+        audio: picked.data.noAudio ? null : new Blob([picked.audio], { type: "audio/mp4" }),
       };
       let saved = true;
       try {
@@ -1555,7 +1623,7 @@ window.startAudioEnglish = function (book, env) {
       const books = [];
       for (const id of list) {
         const raw = await getBook(id);
-        if (raw && raw.chunks) books.push({ id, title: raw.title });
+        if (raw && (raw.chunks || raw.textOnly)) books.push({ id, title: raw.title });
       }
       return books;
     };
@@ -1563,7 +1631,7 @@ window.startAudioEnglish = function (book, env) {
     const start = (record, books, savedOnDevice) => {
       window.startAudioEnglish(record.data, {
         store: local,
-        audioSrc: URL.createObjectURL(record.audio),
+        audioSrc: record.audio ? URL.createObjectURL(record.audio) : null,
         books,
         saveFile: (filename, text) => saveFile(local, filename, text),
         selectBook(id) {
@@ -1616,9 +1684,34 @@ window.startAudioEnglish = function (book, env) {
     });
   }
 
-  // Код приложения сохраняется на устройстве, поэтому оно открывается и без интернета
+  /* ---------- Обновление приложения ---------- */
+
+  // Код приложения сохраняется на устройстве, поэтому оно открывается и без интернета.
+  // Новая версия скачивается в фоне; когда она готова, появляется кнопка «Обновить».
+  function showUpdateButton() {
+    if (document.getElementById("updateBtn")) return;
+    const button = document.createElement("button");
+    button.id = "updateBtn";
+    button.type = "button";
+    button.className = "update-btn";
+    button.textContent = "Обновить";
+    button.title = "Готова новая версия приложения. Книги и статусы не пострадают.";
+    button.addEventListener("click", () => location.reload());
+    const actions = document.querySelector(".top-actions");
+    actions.insertBefore(button, actions.firstChild);
+  }
+
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    const hadVersion = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hadVersion) showUpdateButton();
+    });
+    navigator.serviceWorker.register("sw.js").then((registration) => {
+      // Приложение может днями висеть в памяти iPad: проверяем обновления при каждом возвращении
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") registration.update().catch(() => {});
+      });
+    }).catch(() => {});
   }
 
   boot();
