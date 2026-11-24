@@ -160,22 +160,22 @@ button[aria-pressed="true"] {
   align-items: center;
   padding: 6px 2px;
   line-height: 1.2;
+  border-color: transparent;
+  background: transparent;
 }
+@media (hover: hover) { .stat:not([aria-pressed="true"]):hover { background: var(--hover); } }
+/* Выбранный фильтр: плашка цвета статуса */
+.stat[aria-pressed="true"] { background: var(--known-bg); border-color: var(--ink); color: var(--ink); }
+.stat.st-2[aria-pressed="true"] { background: var(--medium-bg); border-color: var(--medium); }
+.stat.st-3[aria-pressed="true"] { background: var(--unknown-bg); border-color: var(--unknown); }
 .stat b { font-size: 16px; font-variant-numeric: tabular-nums; }
 .stat .num { display: flex; align-items: baseline; gap: 5px; }
 .stat small { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
-.stat span { font-size: 11px; color: var(--muted); }
+.stat > span:last-child { font-size: 11px; color: var(--muted); }
 .stat.st-1 b { color: var(--known); }
 .stat.st-2 b { color: var(--medium); }
 .stat.st-3 b { color: var(--unknown); }
 
-.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 8px; }
-.chips-label { margin-right: 2px; font-size: 12px; color: var(--muted); }
-.chips button { padding: 3px 8px; font-size: 12px; border-radius: 999px; }
-.chips .st-1 { color: var(--known); }
-.chips .st-2 { color: var(--medium); }
-.chips .st-3 { color: var(--unknown); }
-.chips button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--panel); }
 
 .progress {
   display: flex;
@@ -278,8 +278,15 @@ button[aria-pressed="true"] {
 .pop-play { width: 100%; margin-top: 6px; }
 
 /* Кнопка «Обновить» появляется, когда скачана новая версия приложения */
-.update-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
-.update-btn:hover { background: var(--accent); filter: brightness(1.1); }
+/* «Обновить» есть всегда; подсвечена, когда новая версия уже скачана */
+.update-btn .upd-icon { display: inline-block; }
+.update-btn.ready { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.update-btn.ready:hover { background: var(--accent); filter: brightness(1.1); }
+.update-btn.checking .upd-icon { animation: upd-spin 1s linear infinite; }
+@keyframes upd-spin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) {
+  .update-btn .upd-text { display: none; }
+}
 
 /* Книга без аудио: плеер не нужен, остаются только кнопки внизу */
 .text-only .player .seek, .text-only .player .main, .text-only .player .end { display: none; }
@@ -310,6 +317,10 @@ button[aria-pressed="true"] {
 @media (max-width: 900px) {
   .text-size output { display: none; }
   .text-size { gap: 4px; }
+  .controls { column-gap: 6px; }
+  .controls .group { gap: 4px; }
+  .speed output { min-width: 32px; }
+  .tools button { padding-left: 8px; padding-right: 8px; }
 }
 .group { display: flex; align-items: center; gap: 6px; }
 .tools { flex: 1; justify-content: flex-end; }
@@ -331,7 +342,6 @@ button[aria-pressed="true"] {
 /* Сенсорный экран: кнопки крупнее */
 @media (pointer: coarse) {
   .dots button { width: 38px; height: 38px; font-size: 14px; }
-  .chips button { padding: 7px 12px; font-size: 13px; }
   .status-buttons button { padding: 10px 2px; }
   .pop-play { padding: 10px; }
   .speed button { width: 38px; padding: 8px 0; }
@@ -389,23 +399,17 @@ button[aria-pressed="true"] {
   </section>
 
   <aside class="words" aria-label="Слова">
-    <div class="stats" id="stats" role="group" aria-label="Статистика">
-      <div class="stat"><b id="nAll"></b><span>Всего</span></div>
-      <div class="stat st-3"><div class="num"><b id="n3"></b><small id="p3"></small></div><span>Не знаю</span></div>
-      <div class="stat st-2"><div class="num"><b id="n2"></b><small id="p2"></small></div><span>Средне</span></div>
-      <div class="stat st-1"><div class="num"><b id="n1"></b><small id="p1"></small></div><span>Знаю</span></div>
+    <!-- Числа — это и статистика, и фильтр списка: нажатие показывает слова с этим статусом -->
+    <div class="stats" id="filters" role="group" aria-label="Статистика и фильтр слов">
+      <button type="button" class="stat" data-filter="all" title="Показать все слова"><b id="nAll"></b><span>Всего</span></button>
+      <button type="button" class="stat st-3" data-filter="3" title="Показать слова «Не знаю»"><span class="num"><b id="n3"></b><small id="p3"></small></span><span>Не знаю</span></button>
+      <button type="button" class="stat st-2" data-filter="2" title="Показать слова «Средне»"><span class="num"><b id="n2"></b><small id="p2"></small></span><span>Средне</span></button>
+      <button type="button" class="stat st-1" data-filter="1" title="Показать слова «Знаю»"><span class="num"><b id="n1"></b><small id="p1"></small></span><span>Знаю</span></button>
     </div>
     <div class="progress" aria-hidden="true">
       <i id="bar1" class="p1"></i><i id="bar2" class="p2"></i><i id="bar3" class="p3"></i>
     </div>
 
-    <div class="chips" id="filters" role="group" aria-label="Какие статусы показать">
-      <span class="chips-label">Показать:</span>
-      <button type="button" data-filter="all">Все</button>
-      <button type="button" class="st-3" data-filter="3">Не знаю</button>
-      <button type="button" class="st-2" data-filter="2">Средне</button>
-      <button type="button" class="st-1" data-filter="1">Знаю</button>
-    </div>
 
     <div class="list-tools">
       <input id="search" type="search" placeholder="Поиск слова" aria-label="Поиск слова" autocomplete="off">
@@ -1630,32 +1634,90 @@ window.startAudioEnglish = function (book, env) {
   /* ---------- Обновление приложения ---------- */
 
   // Код приложения сохраняется на устройстве, поэтому оно открывается и без интернета.
-  // Новая версия скачивается в фоне; когда она готова, появляется кнопка «Обновить».
-  function showUpdateButton() {
-    if (document.getElementById("updateBtn")) return;
+  // Кнопка «Обновить» видна всегда: если новая версия уже скачана в фоне, она подсвечена
+  // и включает её сразу; если нет — сама проверяет обновление и включает его.
+  // Книги, статусы и место в аудио обновление не трогает.
+  function setupUpdates() {
     const button = document.createElement("button");
     button.id = "updateBtn";
     button.type = "button";
     button.className = "update-btn";
-    button.textContent = "Обновить";
-    button.title = "Готова новая версия приложения. Книги и статусы не пострадают.";
-    button.addEventListener("click", () => location.reload());
-    const actions = document.getElementById("tools");
-    actions.insertBefore(button, actions.firstChild);
+    button.innerHTML = '<span class="upd-icon" aria-hidden="true">⟳</span><span class="upd-text"> Обновить</span>';
+    button.setAttribute("aria-label", "Обновить приложение");
+    const tools = document.getElementById("tools");
+    tools.insertBefore(button, tools.firstChild);
+
+    const supported = "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost");
+    let ready = false, checking = false, registration = null;
+    const idleTitle = "Проверить и установить новую версию. Книги и статусы не пострадают.";
+    button.title = idleTitle;
+
+    const markReady = () => {
+      ready = true;
+      button.classList.add("ready");
+      button.title = "Готова новая версия: нажмите, чтобы включить её. Книги и статусы не пострадают.";
+    };
+    // Короткий ответ на месте значка: ✓ — новее версии нет, ! — нет связи
+    const flash = (icon, title) => {
+      const iconEl = button.querySelector(".upd-icon");
+      iconEl.textContent = icon;
+      button.title = title;
+      setTimeout(() => {
+        iconEl.textContent = "⟳";
+        if (!ready) button.title = idleTitle;
+      }, 2500);
+    };
+
+    if (supported) {
+      const hadVersion = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadVersion) return;
+        if (checking) location.reload(); else markReady();
+      });
+      navigator.serviceWorker.register("sw.js").then((reg) => {
+        registration = reg;
+        // Приложение может днями висеть в памяти iPad: проверяем обновления при каждом возвращении
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update().catch(() => {});
+        });
+      }).catch(() => {});
+    }
+
+    button.addEventListener("click", async () => {
+      if (ready || !supported || !registration) {
+        location.reload();
+        return;
+      }
+      if (checking) return;
+      checking = true;
+      button.classList.add("checking");
+      try {
+        await registration.update();
+        // Новая версия ставится несколько секунд; когда она включится, страница перезагрузится сама
+        const found = await new Promise((resolve) => {
+          const started = Date.now();
+          const look = () => {
+            if (ready) return resolve(true);
+            if (!registration.installing && !registration.waiting) return resolve(false);
+            if (Date.now() - started > 15000) return resolve(true);
+            setTimeout(look, 300);
+          };
+          look();
+        });
+        if (found) {
+          location.reload();
+          return;
+        }
+        flash("✓", "У вас последняя версия");
+      } catch (e) {
+        flash("!", "Нет связи с интернетом — проверить обновление не получилось");
+      }
+      checking = false;
+      button.classList.remove("checking");
+    });
   }
 
-  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
-    const hadVersion = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (hadVersion) showUpdateButton();
-    });
-    navigator.serviceWorker.register("sw.js").then((registration) => {
-      // Приложение может днями висеть в памяти iPad: проверяем обновления при каждом возвращении
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") registration.update().catch(() => {});
-      });
-    }).catch(() => {});
-  }
+  setupUpdates();
 
   boot();
 })();
