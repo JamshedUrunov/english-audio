@@ -133,7 +133,7 @@ button[aria-pressed="true"] {
   position: absolute;
   inset: 0;
   overflow-y: auto;
-  padding: 24px clamp(16px, 5vw, 64px) 40vh;
+  padding: 20px clamp(12px, 1.6vw, 20px) 40vh;
   font: calc(20px * var(--text-scale, 1))/1.75 Charter, "Bitstream Charter", Georgia, Cambria, serif;
 }
 .text p {
@@ -279,11 +279,13 @@ button[aria-pressed="true"] {
 .row.st-2 .row-word { color: var(--medium); }
 .row.st-3 .row-word { color: var(--unknown); }
 
-.dots { display: flex; gap: 3px; }
-.dots button { width: 26px; height: 26px; padding: 0; font-size: 11px; font-weight: 600; color: var(--muted); }
-.dots button.st-1:hover, .dots button.st-1.is { background: var(--known-bg); border-color: var(--known); color: var(--known); }
-.dots button.st-2:hover, .dots button.st-2.is { background: var(--medium-bg); border-color: var(--medium); color: var(--medium); }
-.dots button.st-3:hover, .dots button.st-3.is { background: var(--unknown-bg); border-color: var(--unknown); color: var(--unknown); }
+/* Переключатель статуса: одна кнопка, цвет и надпись — текущий статус */
+.cycle { flex: none; min-width: 76px; height: 28px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.cycle.st-1 { background: var(--known-bg); border-color: var(--known); color: var(--known); }
+.cycle.st-2 { background: var(--medium-bg); border-color: var(--medium); color: var(--medium); }
+.cycle.st-3 { background: var(--unknown-bg); border-color: var(--unknown); color: var(--unknown); }
+.cycle:hover { filter: brightness(1.12); }
+.cycle-big { width: 100%; height: 44px; border-radius: 12px; font-size: 15px; }
 
 .empty { color: var(--muted); text-align: center; }
 
@@ -433,7 +435,8 @@ button[aria-pressed="true"] {
 
 /* Сенсорный экран: кнопки крупнее */
 @media (pointer: coarse) {
-  .dots button { width: 38px; height: 38px; font-size: 14px; }
+  .cycle { height: 34px; min-width: 84px; font-size: 13px; }
+  .cycle-big { height: 48px; font-size: 16px; }
   .status-buttons button { padding: 10px 2px; }
   .pop-play { padding: 10px; }
 }
@@ -504,11 +507,8 @@ button[aria-pressed="true"] {
       <p id="dTranslation" class="d-translation"></p>
       <div id="dLinks" class="pop-links" hidden></div>
       <p id="dSentence" class="d-sentence"></p>
-      <div id="dStatus" class="status-buttons">
-        <button type="button" class="st-1" data-set="1">Знаю</button>
-        <button type="button" class="st-2" data-set="2">Средне</button>
-        <button type="button" class="st-3" data-set="3">Не знаю</button>
-      </div>
+      <!-- Один переключатель статуса: Не знаю → Средне → Знаю → Не знаю -->
+      <button id="dStatus" class="cycle cycle-big" type="button" title="Сменить статус: Не знаю → Средне → Знаю"></button>
     </div>
   </aside>
   <section class="reader" aria-label="Текст">
@@ -670,6 +670,15 @@ window.startAudioEnglish = function (book, env) {
   const $ = (id) => document.getElementById(id);
   const KNOWN = 1, MEDIUM = 2, UNKNOWN = 3, NONE = 0;
   const STATUS_CLASSES = ["", "st-1", "st-2", "st-3"];
+  const STATUS_LABELS = ["", "Знаю", "Средне", "Не знаю"];
+  // Переключатель статуса по кругу: Не знаю → Средне → Знаю → Не знаю
+  const nextStatus = (st) => (st === UNKNOWN ? MEDIUM : st === MEDIUM ? KNOWN : UNKNOWN);
+
+  function paintCycle(button, st) {
+    button.classList.remove("st-1", "st-2", "st-3");
+    button.classList.add(STATUS_CLASSES[st]);
+    button.textContent = STATUS_LABELS[st];
+  }
   const TEXT_SCALES = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.75, 2];
   const SPEEDS = [0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
 
@@ -1122,9 +1131,8 @@ window.startAudioEnglish = function (book, env) {
   function paintRow(row, st) {
     row.classList.remove("st-1", "st-2", "st-3");
     if (st) row.classList.add(STATUS_CLASSES[st]);
-    row.querySelectorAll(".dots button").forEach((b) => {
-      b.classList.toggle("is", Number(b.dataset.set) === st);
-    });
+    const cycle = row.querySelector(".cycle");
+    if (cycle) paintCycle(cycle, st);
   }
 
   function otherForms(v, prefix) {
@@ -1150,19 +1158,12 @@ window.startAudioEnglish = function (book, env) {
     word.appendChild(count);
     li.appendChild(word);
 
-    const dots = document.createElement("span");
-    dots.className = "dots";
-    [["3", "?", "Не знаю"], ["2", "~", "Средне"], ["1", "✓", "Знаю"]].forEach(([set, mark, label]) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "st-" + set;
-      b.dataset.set = set;
-      b.textContent = mark;
-      b.title = label;
-      b.setAttribute("aria-label", label + ": " + book.vocab[v]);
-      dots.appendChild(b);
-    });
-    li.appendChild(dots);
+    const cycle = document.createElement("button");
+    cycle.type = "button";
+    cycle.className = "cycle";
+    cycle.title = "Сменить статус: Не знаю → Средне → Знаю";
+    cycle.setAttribute("aria-label", "Статус слова " + book.vocab[v] + ", нажмите, чтобы сменить");
+    li.appendChild(cycle);
     paintRow(li, statusOf(v));
     return li;
   }
@@ -1218,10 +1219,7 @@ window.startAudioEnglish = function (book, env) {
   }
 
   function paintDetails() {
-    const st = statusOf(selected);
-    $("dStatus").querySelectorAll("[data-set]").forEach((b) => {
-      b.classList.toggle("is", Number(b.dataset.set) === st);
-    });
+    paintCycle($("dStatus"), statusOf(selected));
   }
 
   const translationOf = (v) => (isPhrase(v) ? phraseTr[book.vocab[v]] : window.DICTIONARY[book.vocab[v]]) || "";
@@ -1546,18 +1544,16 @@ window.startAudioEnglish = function (book, env) {
     });
     $("followBtn").addEventListener("click", () => setFollow(true));
 
-    $("dStatus").addEventListener("click", (e) => {
-      const b = e.target.closest("[data-set]");
-      if (b && selected >= 0) setStatus(selected, Number(b.dataset.set));
+    $("dStatus").addEventListener("click", () => {
+      if (selected >= 0) setStatus(selected, nextStatus(statusOf(selected)));
     });
 
     $("list").addEventListener("click", (e) => {
       const row = e.target.closest(".row");
       if (!row) return;
       const v = Number(row.dataset.v);
-      const set = e.target.closest("[data-set]");
-      if (set) {
-        setStatus(v, Number(set.dataset.set));
+      if (e.target.closest(".cycle")) {
+        setStatus(v, nextStatus(statusOf(v)));
         return;
       }
       if (e.target.closest(".row-word")) {

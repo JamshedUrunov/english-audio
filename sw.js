@@ -4,7 +4,7 @@
 // только страница с кодом. Всё, что качается, берётся в обход кэша браузера
 // (GitHub Pages разрешает браузеру 10 минут держать старую копию — из-за этого обновление
 // иногда «не срабатывало»).
-const CACHE = "audio-english-d50068e77a";
+const CACHE = "audio-english-7676107a62";
 const FILES = ["data.27df18d208.js", "icon-180.3fffa56405.png", "icon-192.510a2e2da0.png", "icon-512.53990faed2.png", "index.html", "manifest.d6569d8e8b.webmanifest"];
 const hashed = (name) => /\.[0-9a-f]{10}\.[a-z]+$/.test(name);
 
