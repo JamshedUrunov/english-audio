@@ -997,6 +997,12 @@ window.startAudioEnglish = function (book, env) {
     tick();
   }
 
+  function jumpToToken(i) {
+    seekTo(times[i]);
+    state.position = times[i];
+    savePosition(audio.paused);
+  }
+
   function goSentence(s, play) {
     const target = Math.min(Math.max(s, 0), starts.length - 1);
     if (textOnly) {
@@ -1508,19 +1514,21 @@ window.startAudioEnglish = function (book, env) {
       seekTo((seek.value / 1000) * (audio.duration || 0));
     });
 
-    // Клик по слову: окно статуса. Клик по промежутку в предложении: переход к нему.
+    // Нажатие на слово: панель слова и перемотка аудио к нему. На промежуток в предложении: переход к предложению.
     $("text").addEventListener("click", (e) => {
       const span = e.target.closest(".w");
       if (span) {
         const i = Number(span.dataset.i);
         const phrase = phraseAt.get(i);
         const v = phrase ? phrase[0] : book.tokenVocab[i];
+        // Аудио перематывается к нажатому слову (у сочетания — к его началу): ▶ начнёт отсюда
+        if (!textOnly) jumpToToken(phrase ? phrase[1][0] : i);
         if (v >= 0) {
           if (textOnly) setCurrent(i);
           openPop(v, i);
-          e.stopPropagation();
-          return;
         }
+        e.stopPropagation();
+        return;
       }
       const sentence = e.target.closest(".sent");
       if (sentence) goSentence(Number(sentence.dataset.s));
