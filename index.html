@@ -93,11 +93,37 @@ button[aria-pressed="true"] {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-areas: "details text words";
+  grid-template-columns: 280px minmax(0, 1fr) 380px;
+  grid-template-rows: minmax(0, 1fr);
 }
-/* Панель слов скрыта: текст на всю ширину (и на всю высоту на узком экране) */
-.layout.no-words { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: minmax(0, 1fr) !important; }
-.layout.no-words .words { display: none; }
+.details { grid-area: details; }
+.reader { grid-area: text; }
+.words { grid-area: words; }
+/* Панели слева и справа можно спрятать: текст занимает освободившееся место */
+.layout.no-details { grid-template-areas: "text words"; grid-template-columns: minmax(0, 1fr) 380px; }
+.layout.no-words { grid-template-areas: "details text"; grid-template-columns: 280px minmax(0, 1fr); }
+.layout.no-details.no-words { grid-template-areas: "text"; grid-template-columns: minmax(0, 1fr); }
+.layout.no-details .details, .layout.no-words .words { display: none; }
+
+/* Панель слова */
+.details {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+.d-empty { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.d-head { color: var(--muted); font-size: 13px; }
+.d-head b { color: var(--ink); font-size: 22px; font-weight: 700; }
+.d-forms { margin-top: 2px; color: var(--muted); font-size: 12px; }
+.d-translation { margin: 10px 0 12px; font-size: 17px; line-height: 1.35; color: var(--ink); }
+.d-sentence { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--bg); font-size: 15px; line-height: 1.45; }
+.d-sentence:empty { display: none; }
+/* Перевод слова внутри перевода предложения */
+.d-sentence mark { padding: 0 2px; border-radius: 4px; background: var(--medium-bg); color: var(--ink); }
+.details .status-buttons button { padding: 10px 2px; font-size: 13px; }
 .panel-btn .i-panel-off, .panel-btn[aria-expanded="false"] .i-panel-on { display: none; }
 .panel-btn[aria-expanded="false"] .i-panel-off { display: block; }
 
@@ -453,7 +479,12 @@ button[aria-pressed="true"] {
 
 
 @media (max-width: 820px) {
-  .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr); }
+  /* Узкий экран: текст, под ним панель слова, ниже список слов */
+  .layout { grid-template-areas: "text" "details" "words"; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) auto minmax(0, 1fr); }
+  .layout.no-details { grid-template-areas: "text" "words"; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .layout.no-words { grid-template-areas: "text" "details"; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .layout.no-details.no-words { grid-template-areas: "text"; grid-template-rows: minmax(0, 1fr); }
+  .details { max-height: 34vh; padding: 12px 16px; border-right: 0; border-top: 1px solid var(--line); }
   .words { border-left: 0; border-top: 1px solid var(--line); }
   .text { font-size: calc(18px * var(--text-scale, 1)); }
 }
@@ -464,11 +495,25 @@ button[aria-pressed="true"] {
 <div id="saveWarning" class="toast" role="status" hidden></div>
 
 <main class="layout">
+  <!-- Левая панель: выбранное слово или сочетание, его перевод и перевод предложения -->
+  <aside id="details" class="details" aria-label="Слово">
+    <p id="dEmpty" class="d-empty">Нажмите на слово в тексте — здесь появятся его перевод и перевод предложения.</p>
+    <div id="dBody" hidden>
+      <div class="d-head"><b id="dWord"></b> <span id="dCount"></span></div>
+      <div id="dForms" class="d-forms"></div>
+      <p id="dTranslation" class="d-translation"></p>
+      <div id="dLinks" class="pop-links" hidden></div>
+      <p id="dSentence" class="d-sentence"></p>
+      <div id="dStatus" class="status-buttons">
+        <button type="button" class="st-1" data-set="1">Знаю</button>
+        <button type="button" class="st-2" data-set="2">Средне</button>
+        <button type="button" class="st-3" data-set="3">Не знаю</button>
+      </div>
+    </div>
+  </aside>
   <section class="reader" aria-label="Текст">
     <div id="text" class="text"></div>
     <button id="followBtn" class="follow" type="button" hidden>↓ К текущему предложению</button>
-    <!-- Перевод текущего предложения: включается кнопкой внизу -->
-    <div id="trBar" class="tr-bar" aria-live="polite" hidden><p id="trText"></p></div>
   </section>
 
   <aside class="words" aria-label="Слова">
@@ -519,7 +564,7 @@ button[aria-pressed="true"] {
       </span>
     </div>
     <div id="tools" class="group tools">
-      <button id="trBtn" class="tool-btn icon-only" type="button" aria-pressed="false" title="Перевод текущего предложения" aria-label="Перевод текущего предложения" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 11.5h3.5M13 11.5h4M7 15h7M16.5 15h.5"/></svg></button>
+      <button id="detailsBtn" class="tool-btn icon-only panel-btn" type="button" title="Скрыть или показать панель слова слева" aria-label="Панель слова" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-panel-on" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="M4.5 5.5h5v13h-5z" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-panel-off" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M9.5 4.5v15"/></svg></button>
       <button id="panelBtn" class="tool-btn icon-only panel-btn" type="button" title="Скрыть или показать панель слов" aria-label="Панель слов" aria-expanded="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-panel-on" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M14.5 4.5v15"/><path d="M14.5 5.5h5v13h-5z" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-panel-off" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M14.5 4.5v15"/></svg></button>
       <span class="seg text-size" role="group" aria-label="Размер текста">
         <button id="smallerTextBtn" class="a-small" type="button" title="Уменьшить текст (-)" aria-label="Уменьшить текст">A</button>
@@ -535,22 +580,9 @@ button[aria-pressed="true"] {
   </div>
 </footer>
 
-<div id="pop" class="pop" role="dialog" aria-label="Статус слова" hidden>
-  <div class="pop-head"><b id="popWord"></b> <span id="popCount"></span><div id="popForms"></div></div>
-  <p id="popTranslation" class="pop-translation"></p>
-  <div id="popLinks" class="pop-links" hidden></div>
-  <button id="popSentBtn" class="pop-sent-btn" type="button" aria-expanded="false">Перевод предложения</button>
-  <p id="popSentence" class="pop-sentence" hidden></p>
-  <div class="status-buttons">
-    <button type="button" class="st-3" data-set="3">Не знаю <kbd>3</kbd></button>
-    <button type="button" class="st-2" data-set="2">Средне <kbd>2</kbd></button>
-    <button type="button" class="st-1" data-set="1">Знаю <kbd>1</kbd></button>
-  </div>
-  <button id="popPlay" class="pop-play" type="button">▶ Слушать отсюда</button>
-</div>
 
 <audio id="audio" preload="auto"></audio>
-<script src="data.cdc2e8c11a.js"></script>
+<script src="data.27df18d208.js"></script>
 <script>
 // Хранение в браузере: статусы слов общие для всех книг, позиция у каждой книги своя
 window.createLocalStore = function () {
@@ -648,9 +680,11 @@ window.startAudioEnglish = function (book, env) {
   const starts = book.sentenceStarts;
 
   // Состояние, которое переживает перезагрузку страницы
-  const state = { statuses: {}, position: 0, speed: 1, sort: "freq", filters: [], textScale: 1, showTr: false, hideWords: false };
+  const state = { statuses: {}, position: 0, speed: 1, sort: "freq", filters: [], textScale: 1, hideWords: false, hideDetails: false };
   // Переводы предложений этой книги (по номеру предложения), если они есть
   const sentenceTr = (window.SENTENCE_TR || {})[book.id] || null;
+  // Сопоставление слов предложения с кусками перевода: {номер предложения: [[англ., рус.], ...]}
+  const sentenceAlign = (window.SENTENCE_ALIGN || {})[book.id] || {};
 
   // Начальная форма для каждой формы слова этой книги
   const lemmaOf = {};
@@ -797,7 +831,7 @@ window.startAudioEnglish = function (book, env) {
   function save() {
     env.store.saveSettings({
       speed: state.speed, sort: state.sort, filters: state.filters,
-      textScale: state.textScale, showTr: state.showTr, hideWords: state.hideWords, book: book.id,
+      textScale: state.textScale, hideWords: state.hideWords, hideDetails: state.hideDetails, book: book.id,
     });
   }
 
@@ -880,40 +914,26 @@ window.startAudioEnglish = function (book, env) {
       currentSentence = s;
       sentenceEls[s].classList.add("cur");
       $("position").textContent = "Предложение " + (s + 1) + " из " + starts.length;
-      if (state.showTr) renderTrBar();
-      if (follow && $("pop").hidden) scrollToCurrent();
+      if (follow) scrollToCurrent();
     }
   }
 
-  /* ---------- Перевод предложений ---------- */
+  /* ---------- Панели слева и справа ---------- */
 
-  // Полоса под текстом: перевод того предложения, которое сейчас звучит (или выбрано)
-  function renderTrBar() {
-    const bar = $("trBar");
-    bar.hidden = !state.showTr || !sentenceTr;
-    if (bar.hidden) {
-      $("followBtn").style.bottom = "";
-      return;
-    }
-    $("trText").textContent = sentenceTr[currentSentence] || "Перевода этого предложения нет";
-    // Кнопка «К текущему предложению» поднимается над полосой
-    $("followBtn").style.bottom = bar.offsetHeight + 12 + "px";
-  }
-
-  // Панель слов можно спрятать: текст занимает всё место. Звучащее предложение остаётся на экране.
+  // Панели можно спрятать: текст занимает освободившееся место, звучащее предложение остаётся на экране
   function setHideWords(hide) {
     state.hideWords = hide;
     document.querySelector(".layout").classList.toggle("no-words", hide);
     $("panelBtn").setAttribute("aria-expanded", String(!hide));
-    clearSelection();
     if (follow) requestAnimationFrame(() => scrollToCurrent(true));
     save();
   }
 
-  function setShowTr(on) {
-    state.showTr = on;
-    $("trBtn").setAttribute("aria-pressed", String(on));
-    renderTrBar();
+  function setHideDetails(hide) {
+    state.hideDetails = hide;
+    document.querySelector(".layout").classList.toggle("no-details", hide);
+    $("detailsBtn").setAttribute("aria-expanded", String(!hide));
+    if (follow) requestAnimationFrame(() => scrollToCurrent(true));
     save();
   }
 
@@ -952,10 +972,6 @@ window.startAudioEnglish = function (book, env) {
 
   function resumeFollow() {
     if (audio.paused) return;
-    if (!$("pop").hidden) {
-      resumeTimer = setTimeout(resumeFollow, FOLLOW_RESUME_MS); // ждём, пока закроют карточку слова
-      return;
-    }
     setFollow(true);
   }
 
@@ -1058,7 +1074,7 @@ window.startAudioEnglish = function (book, env) {
     });
     const row = $("list").querySelector('[data-v="' + v + '"]');
     if (row) paintRow(row, st);
-    if (v === selected) paintPop();
+    if (v === selected) paintDetails();
   }
 
   function renderStats() {
@@ -1197,39 +1213,151 @@ window.startAudioEnglish = function (book, env) {
     if (row) row.classList.remove("sel");
     selected = -1;
     selectedToken = -1;
-    $("pop").hidden = true;
-    // Пока была открыта карточка, текст не прокручивался: догоняем звук
-    if (follow && !audio.paused) requestAnimationFrame(() => { if ($("pop").hidden) scrollToCurrent(); });
+    $("dBody").hidden = true;
+    $("dEmpty").hidden = false;
   }
 
-  function paintPop() {
+  function paintDetails() {
     const st = statusOf(selected);
-    $("pop").querySelectorAll("[data-set]").forEach((b) => {
+    $("dStatus").querySelectorAll("[data-set]").forEach((b) => {
       b.classList.toggle("is", Number(b.dataset.set) === st);
     });
   }
 
+  const translationOf = (v) => (isPhrase(v) ? phraseTr[book.vocab[v]] : window.DICTIONARY[book.vocab[v]]) || "";
+
+  // Выбранное слово или сочетание — в левой панели: перевод, перевод предложения, статус
   function openPop(v, token) {
     selectWord(v, token);
-    const pop = $("pop");
-    $("popWord").textContent = book.vocab[v];
-    $("popCount").textContent = "×" + vocabCount[v];
-    $("popForms").textContent = otherForms(v, isPhrase(v) ? "" : "формы: ");
-    $("popTranslation").textContent =
-      (isPhrase(v) ? phraseTr[book.vocab[v]] : window.DICTIONARY[book.vocab[v]]) || "Перевода пока нет";
+    if (state.hideDetails) setHideDetails(false); // нажали на слово — значит, панель нужна
+    $("dWord").textContent = book.vocab[v];
+    $("dCount").textContent = "×" + vocabCount[v];
+    $("dForms").textContent = otherForms(v, isPhrase(v) ? "" : "формы: ");
+    $("dTranslation").textContent = translationOf(v) || "Перевода пока нет";
     fillPopLinks(v);
-    // Перевод предложения в карточке закрыт, пока его не попросят
-    $("popSentBtn").hidden = !sentenceTr;
-    $("popSentBtn").setAttribute("aria-expanded", "false");
-    $("popSentence").hidden = true;
-    paintPop();
-    pop.hidden = false;
-    placePop(selectedToken);
+    const sentence = sentenceTr ? sentenceTr[sentenceOfToken(selectedToken)] || "" : "";
+    $("dSentence").replaceChildren(...markRanges(sentence, alignedRanges(sentence, v) || stemRanges(sentence, translationOf(v))));
+    paintDetails();
+    $("dEmpty").hidden = true;
+    $("dBody").hidden = false;
+    $("details").scrollTop = 0;
+  }
+
+  /* Где в переводе предложения стоит перевод слова. Выравнивания слов нет, поэтому ищем
+     по основам вариантов перевода из словаря: «наброситься» найдёт «набросится», «наброситься».
+     Берётся вариант, у которого нашлось больше всего слов; соседние находки сливаются. */
+  const STOP_WORDS = new Set(["что", "как", "это", "его", "она", "они", "оно", "для", "или", "при", "над", "под",
+    "без", "про", "так", "уже", "ещё", "еще", "вам", "вас", "ваш", "кто", "чем", "чтобы", "себя", "свой", "быть"]);
+  const norm = (w) => w.toLowerCase().replace(/ё/g, "е");
+
+  function stemOf(word) {
+    const w = norm(word);
+    if (w.length <= 4) return w;
+    return w.slice(0, Math.max(4, Math.ceil(w.length * 0.65)));
+  }
+
+  // Чистое слово токена для сравнения с сопоставлением: без кавычек и знаков по краям
+  const bare = (t) => t.toLowerCase().replace(/’/g, "'").replace(/^[^\w']+|[^\w']+$/g, "");
+
+  /* Точная подсветка по сопоставлению. Для выбранного места берём его английский текст,
+     считаем, какое это по счёту такое же место в предложении, и берём столько же по счёту пару.
+     Нет пары для слова внутри сочетания — подсвечиваем перевод сочетания; для сочетания без пары —
+     переводы его слов. */
+  function alignedRanges(sentence, v) {
+    const s = sentenceOfToken(selectedToken);
+    const list = sentenceAlign[s];
+    if (!sentence || !list || !list.length) return null;
+    const [start, end] = [starts[s], s + 1 < starts.length ? starts[s + 1] : book.tokens.length];
+    const textOf = (tokens) => tokens.map((t) => bare(book.tokens[t])).join(" ");
+
+    const find = (tokens) => {
+      const surface = textOf(tokens);
+      const n = tokens.length;
+      let k = 0; // сколько таких же мест раньше в предложении
+      for (let i = start; i < tokens[0]; i++) {
+        const same = Array.from({ length: n }, (_, j) => i + j);
+        if (same[n - 1] < end && textOf(same) === surface) k++;
+      }
+      const hits = list.map((p, idx) => [p, idx]).filter(([p]) => bare(p[0]).replace(/\s+/g, " ") === surface);
+      if (!hits.length) return null;
+      const [pair, idx] = hits[Math.min(k, hits.length - 1)];
+      return rangeOf(sentence, pair[1], list.slice(0, idx).filter((p) => p[1] === pair[1]).length);
+    };
+
+    const tokens = selectedTokens.length ? selectedTokens : [selectedToken];
+    const contiguous = tokens.every((t, j) => j === 0 || t === tokens[j - 1] + 1);
+    let range = contiguous ? find(tokens) : null;
+    if (range) return [range];
+    if (isPhrase(v)) {
+      const parts = tokens.map((t) => find([t])).filter(Boolean);
+      return parts.length ? parts : null;
+    }
+    const phrase = phraseAt.get(selectedToken);
+    if (phrase) {
+      const ptoks = phrase[1];
+      range = ptoks.every((t, j) => j === 0 || t === ptoks[j - 1] + 1) ? find(ptoks) : null;
+      if (range) return [range];
+    }
+    return null;
+  }
+
+  // Где в переводе стоит кусок: n-е его вхождение (если кусок встречается несколько раз)
+  function rangeOf(sentence, piece, n) {
+    let at = -1;
+    for (let i = 0; i <= n; i++) {
+      const next = sentence.indexOf(piece, at + 1);
+      if (next < 0) break;
+      at = next;
+    }
+    return at < 0 ? null : [at, at + piece.length];
+  }
+
+  // Запасной способ — по основам вариантов перевода из словаря
+  function stemRanges(sentence, translation) {
+    if (!sentence) return [];
+    const words = [];
+    sentence.replace(/[A-Za-zА-Яа-яЁё-]+/g, (w, at) => { words.push({ w: norm(w), at, end: at + w.length }); return w; });
+    const variants = translation.replace(/\([^)]*\)/g, " ").split(/[,;]/);
+    let best = [];
+    variants.forEach((variant) => {
+      const stems = (variant.match(/[А-Яа-яЁё-]+/g) || [])
+        .filter((w) => w.length >= 3 && !STOP_WORDS.has(norm(w)))
+        .map(stemOf);
+      if (!stems.length) return;
+      const hits = new Set();
+      stems.forEach((stem) => words.forEach((x, k) => { if (x.w.startsWith(stem)) hits.add(k); }));
+      if (hits.size > best.length) best = [...hits].sort((a, b) => a - b);
+    });
+    // Соседние слова (через пробел или предлог) выделяем одним куском
+    const spans = [];
+    best.forEach((k) => {
+      const last = spans[spans.length - 1];
+      if (last && k - last.to <= 2) last.to = k; else spans.push({ from: k, to: k });
+    });
+    return spans.map(({ from, to }) => [words[from].at, words[to].end]);
+  }
+
+  // Текст перевода с выделенными кусками
+  function markRanges(sentence, ranges) {
+    if (!sentence) return [];
+    const sorted = (ranges || []).filter(Boolean).sort((a, b) => a[0] - b[0]);
+    const out = [];
+    let pos = 0;
+    sorted.forEach(([a, b]) => {
+      if (a < pos) return; // пересечения пропускаем
+      if (a > pos) out.push(document.createTextNode(sentence.slice(pos, a)));
+      const mark = document.createElement("mark");
+      mark.textContent = sentence.slice(a, b);
+      out.push(mark);
+      pos = b;
+    });
+    if (pos < sentence.length) out.push(document.createTextNode(sentence.slice(pos)));
+    return out;
   }
 
   // Переходы между сочетанием и его словами: у каждого свой статус
   function fillPopLinks(v) {
-    const box = $("popLinks");
+    const box = $("dLinks");
     box.textContent = "";
     const add = (label, target, token) => {
       const b = document.createElement("button");
@@ -1250,19 +1378,6 @@ window.startAudioEnglish = function (book, env) {
       if (phrase) add("сочетание: " + book.vocab[phrase[0]], phrase[0], selectedToken);
     }
     box.hidden = !box.childElementCount;
-  }
-
-  // Окно держится в пределах текста и не заходит на панель слов
-  function placePop(token) {
-    const pop = $("pop");
-    const r = tokenSpans[token].getBoundingClientRect();
-    const area = $("text").getBoundingClientRect();
-    const w = pop.offsetWidth, h = pop.offsetHeight;
-    const left = Math.min(Math.max(r.left, area.left + 8), area.right - w - 8);
-    const below = r.bottom + 6;
-    const top = below + h < area.bottom - 8 ? below : Math.max(r.top - h - 6, area.top + 8);
-    pop.style.left = left + "px";
-    pop.style.top = top + "px";
   }
 
   /* ---------- Экспорт и импорт ---------- */
@@ -1416,7 +1531,6 @@ window.startAudioEnglish = function (book, env) {
     // Окно слова идёт за словом: абзацы вне экрана при измерении сдвигают текст
     let readTimer = null;
     $("text").addEventListener("scroll", () => {
-      if (!$("pop").hidden) placePop(selectedToken);
       if (textOnly) {
         clearTimeout(readTimer);
         readTimer = setTimeout(saveReadingPlace, 400);
@@ -1424,10 +1538,7 @@ window.startAudioEnglish = function (book, env) {
     }, { passive: true });
 
     // Автопрокрутку отключает только прокрутка самим пользователем
-    const onManualScroll = () => {
-      clearSelection();
-      pauseFollow();
-    };
+    const onManualScroll = () => pauseFollow();
     $("text").addEventListener("wheel", onManualScroll, { passive: true });
     $("text").addEventListener("touchmove", onManualScroll, { passive: true });
     $("text").addEventListener("pointerdown", (e) => {
@@ -1435,20 +1546,9 @@ window.startAudioEnglish = function (book, env) {
     });
     $("followBtn").addEventListener("click", () => setFollow(true));
 
-    $("pop").addEventListener("click", (e) => {
-      e.stopPropagation();
+    $("dStatus").addEventListener("click", (e) => {
       const b = e.target.closest("[data-set]");
       if (b && selected >= 0) setStatus(selected, Number(b.dataset.set));
-    });
-    $("popPlay").addEventListener("click", () => {
-      const token = selectedToken;
-      clearSelection();
-      seekTo(times[token]);
-      setFollow(true);
-      audio.play();
-    });
-    document.addEventListener("click", (e) => {
-      if (!$("pop").hidden && !e.target.closest(".row")) clearSelection();
     });
 
     $("list").addEventListener("click", (e) => {
@@ -1465,9 +1565,6 @@ window.startAudioEnglish = function (book, env) {
         pauseFollow();
         tokenSpans[token].scrollIntoView({ block: "center" });
         openPop(v, token);
-        setTimeout(() => {
-          if (selectedToken === token && !$("pop").hidden) placePop(token);
-        }, 300);
         e.stopPropagation();
       }
     });
@@ -1499,17 +1596,7 @@ window.startAudioEnglish = function (book, env) {
       $("addBookBtn").addEventListener("click", env.addBook);
     }
 
-    $("trBtn").addEventListener("click", () => setShowTr(!state.showTr));
-    $("popSentBtn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      const text = $("popSentence");
-      const open = text.hidden;
-      text.textContent = sentenceTr[sentenceOfToken(selectedToken)] || "Перевода этого предложения нет";
-      text.hidden = !open;
-      $("popSentBtn").setAttribute("aria-expanded", String(open));
-      placePop(selectedToken);
-    });
-    window.addEventListener("resize", renderTrBar);
+    $("detailsBtn").addEventListener("click", () => setHideDetails(!state.hideDetails));
     $("smallerTextBtn").addEventListener("click", () => stepTextScale(-1));
     $("largerTextBtn").addEventListener("click", () => stepTextScale(1));
     $("exportBtn").addEventListener("click", exportStatuses);
@@ -1592,7 +1679,6 @@ window.startAudioEnglish = function (book, env) {
 
   load();
   document.body.classList.toggle("text-only", textOnly);
-  $("popPlay").hidden = textOnly;
   if (env.books.length > 1) {
     const select = $("bookSelect");
     env.books.forEach((b) => select.add(new Option(b.title, b.id, false, b.id === book.id)));
@@ -1607,8 +1693,7 @@ window.startAudioEnglish = function (book, env) {
   setSpeed(state.speed);
   setCurrent(0);
   setTextScale(state.textScale);
-  $("trBtn").hidden = !sentenceTr;
-  setShowTr(!!state.showTr && !!sentenceTr);
+  setHideDetails(!!state.hideDetails);
   setHideWords(!!state.hideWords);
   sentenceEls[0].classList.add("cur");
   $("position").textContent = "Предложение 1 из " + starts.length;
