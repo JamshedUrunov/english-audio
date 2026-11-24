@@ -1,6 +1,6 @@
 // Хранит код приложения на устройстве: оно открывается сразу и без интернета,
 // а новая версия тихо скачивается в фоне и включается при следующем запуске
-const CACHE = "audio-english-877a94c6da60";
+const CACHE = "audio-english-e24ab131848a";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (event) => {
