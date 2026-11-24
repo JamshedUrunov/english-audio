@@ -582,7 +582,7 @@ button[aria-pressed="true"] {
 
 
 <audio id="audio" preload="auto"></audio>
-<script src="data.27df18d208.js"></script>
+<script src="data.c8702493a0.js"></script>
 <script>
 // Хранение в браузере: статусы слов общие для всех книг, позиция у каждой книги своя
 window.createLocalStore = function () {
@@ -1762,8 +1762,13 @@ window.startAudioEnglish = function (book, env) {
     return libraryCall("readwrite", (books) => books.put({ id: record.id, title: record.title, data: record.data, chunks: count, size }));
   }
 
+  // Исправленный текст книги приходит вместе с обновлением приложения: он заменяет текст,
+  // сохранённый на устройстве (аудио и привязка слов ко времени не меняются)
+  const freshData = (data) => ((window.BOOK_DATA || {})[data.id]) || data;
+
   async function loadBook(id) {
     const raw = await getBook(id);
+    if (raw) raw.data = freshData(raw.data);
     if (raw && raw.textOnly) return { id: raw.id, title: raw.title, data: raw.data, audio: null };
     if (!raw || !raw.chunks) return null;
     const parts = [];
@@ -1870,7 +1875,7 @@ window.startAudioEnglish = function (book, env) {
           try {
             const data = JSON.parse(await file.text());
             if (isBookData(data)) {
-              picked.data = data;
+              picked.data = freshData(data);
               mark("#libText", "Текст: " + data.title);
               if (data.noAudio) mark("#libAudio", "Аудио: не нужно, книга без аудио");
             } else if (data && data.statuses && typeof data.statuses === "object") {
