@@ -64,30 +64,29 @@ button[aria-pressed="true"] {
 }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* Шапка */
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-block: 8px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  border-bottom: 1px solid var(--line);
+/* Выбор книги — значок внизу, виден, только когда книг больше одной.
+   Поверх значка лежит невидимый список: нажатие открывает обычный выбор iPad */
+.book-pick { position: relative; border: 1px solid var(--line); cursor: pointer; }
+.book-pick:hover { background: var(--hover); }
+.book-pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+/* Предупреждение всплывает сверху поверх текста */
+.toast {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  z-index: 30;
+  max-width: min(560px, calc(100% - 32px));
+  padding: 8px 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--unknown);
+  border-radius: 12px;
   background: var(--panel);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 35%);
+  color: var(--unknown);
+  font-size: 13px;
+  cursor: pointer;
 }
-.top h1 { margin: 0; font-size: 15px; font-weight: 600; }
-.book-select {
-  min-width: 0;
-  max-width: 60%;
-  padding: 5px 6px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  font-weight: 600;
-}
-.top-actions { display: flex; align-items: center; gap: 8px; }
-.warning { color: var(--unknown); font-size: 12px; }
 
 /* Раскладка */
 .layout {
@@ -428,13 +427,8 @@ button[aria-pressed="true"] {
 </style>
 </head>
 <body>
-<header class="top">
-  <h1 id="title"></h1>
-  <select id="bookSelect" class="book-select" aria-label="Книга" hidden></select>
-  <div class="top-actions">
-    <span id="saveWarning" class="warning" hidden></span>
-  </div>
-</header>
+<!-- Предупреждения всплывают поверх текста; нажатие убирает -->
+<div id="saveWarning" class="toast" role="status" hidden></div>
 
 <main class="layout">
   <section class="reader" aria-label="Текст">
@@ -495,6 +489,7 @@ button[aria-pressed="true"] {
         <output id="textSize">100%</output>
         <button id="largerTextBtn" class="a-large" type="button" title="Увеличить текст (+)" aria-label="Увеличить текст">A</button>
       </span>
+      <label id="bookPick" class="tool-btn icon-only book-pick" title="Другая книга" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h5v14H4z"/><path d="M9 5h5v14H9z"/><path d="m14.5 5.6 4.6-1.2 3.4 13.5-4.6 1.2z"/></svg><select id="bookSelect" aria-label="Книга"></select></label>
       <button id="addBookBtn" class="tool-btn" type="button" title="Добавить книгу" aria-label="Добавить книгу" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V6a2 2 0 0 1 2-2h12v13H7a2 2 0 0 0-2 2 2 2 0 0 0 2 2h12"/><path d="M12 7.5v6M9 10.5h6"/></svg><span>Книга</span></button>
       <button id="exportBtn" class="tool-btn" type="button" title="Сохранить статусы слов в файл"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></svg><span>Экспорт</span></button>
       <button id="importBtn" class="tool-btn" type="button" title="Загрузить статусы слов из файла"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M5 20h14"/></svg><span>Импорт</span></button>
@@ -1266,6 +1261,7 @@ window.startAudioEnglish = function (book, env) {
       renderList();
     });
     $("bookSelect").addEventListener("change", (e) => env.selectBook(e.target.value));
+    $("saveWarning").addEventListener("click", () => showNotice(""));
     if (env.addBook) {
       $("addBookBtn").hidden = false;
       $("addBookBtn").addEventListener("click", env.addBook);
@@ -1353,12 +1349,10 @@ window.startAudioEnglish = function (book, env) {
   load();
   document.body.classList.toggle("text-only", textOnly);
   $("popPlay").hidden = textOnly;
-  $("title").textContent = book.title;
   if (env.books.length > 1) {
     const select = $("bookSelect");
     env.books.forEach((b) => select.add(new Option(b.title, b.id, false, b.id === book.id)));
-    select.hidden = false;
-    $("title").hidden = true;
+    $("bookPick").hidden = false;
   }
   document.title = book.title;
   renderText();
