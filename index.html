@@ -282,8 +282,9 @@ button[aria-pressed="true"] {
 .update-btn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 .update-btn:hover { background: var(--accent); filter: brightness(1.1); }
 
-/* Книга без аудио: плеер не нужен */
-.text-only .player { display: none; }
+/* Книга без аудио: плеер не нужен, остаются только кнопки внизу */
+.text-only .player .seek, .text-only .player .controls { display: none; }
+.text-only .tools { margin-top: 0; }
 
 /* Плеер */
 .player {
@@ -304,6 +305,7 @@ button[aria-pressed="true"] {
   margin-top: 6px;
 }
 .group { display: flex; align-items: center; gap: 6px; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
 .group.end { justify-content: flex-end; flex-wrap: wrap; }
 .position { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .main button { min-width: 42px; height: 38px; }
@@ -371,15 +373,6 @@ button[aria-pressed="true"] {
   <select id="bookSelect" class="book-select" aria-label="Книга" hidden></select>
   <div class="top-actions">
     <span id="saveWarning" class="warning" hidden></span>
-    <span class="text-size" role="group" aria-label="Размер текста">
-      <button id="smallerTextBtn" type="button" title="Уменьшить текст (-)" aria-label="Уменьшить текст">A−</button>
-      <output id="textSize">100%</output>
-      <button id="largerTextBtn" type="button" title="Увеличить текст (+)" aria-label="Увеличить текст">A+</button>
-    </span>
-    <button id="addBookBtn" type="button" hidden>Добавить книгу</button>
-    <button id="exportBtn" type="button" title="Сохранить статусы слов в файл">Экспорт</button>
-    <button id="importBtn" type="button" title="Загрузить статусы слов из файла">Импорт</button>
-    <input id="importFile" type="file" accept="application/json,.json" hidden>
   </div>
 </header>
 
@@ -444,15 +437,23 @@ button[aria-pressed="true"] {
       <button id="nextBtn" type="button" title="Следующее предложение (→)" aria-label="Следующее предложение">⏭</button>
     </div>
     <div class="group end">
-      <button id="repeatBtn" type="button" title="Прослушать предложение с начала (R)">↺ Сначала</button>
-      <button id="loopBtn" type="button" aria-pressed="false" title="Повторять предложение по кругу (L)">Повтор</button>
-      <button id="stopBtn" type="button" aria-pressed="false" title="Пауза после каждого предложения (P)">Стоп после фразы</button>
       <span class="speed">
         <button id="slowerBtn" type="button" title="Медленнее ([)" aria-label="Медленнее">−</button>
         <output id="speed">1.0×</output>
         <button id="fasterBtn" type="button" title="Быстрее (])" aria-label="Быстрее">+</button>
       </span>
     </div>
+  </div>
+  <div id="tools" class="tools">
+    <span class="text-size" role="group" aria-label="Размер текста">
+      <button id="smallerTextBtn" type="button" title="Уменьшить текст (-)" aria-label="Уменьшить текст">A−</button>
+      <output id="textSize">100%</output>
+      <button id="largerTextBtn" type="button" title="Увеличить текст (+)" aria-label="Увеличить текст">A+</button>
+    </span>
+    <button id="addBookBtn" type="button" hidden>Добавить книгу</button>
+    <button id="exportBtn" type="button" title="Сохранить статусы слов в файл">Экспорт</button>
+    <button id="importBtn" type="button" title="Загрузить статусы слов из файла">Импорт</button>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
   </div>
 </footer>
 
@@ -560,7 +561,6 @@ window.startAudioEnglish = function (book, env) {
   const STATUS_CLASSES = ["", "st-1", "st-2", "st-3"];
   const TEXT_SCALES = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.75, 2];
   const SPEEDS = [0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
-  const SENTENCE_END_MARGIN = 0.05; // сек: чтобы пауза не захватывала начало следующей фразы
 
   const audio = $("audio");
   const times = book.times.map((ms) => ms / 1000);
@@ -569,7 +569,7 @@ window.startAudioEnglish = function (book, env) {
   const starts = book.sentenceStarts;
 
   // Состояние, которое переживает перезагрузку страницы
-  const state = { statuses: {}, position: 0, speed: 1, stopAfter: false, sort: "freq", filters: [], textScale: 1 };
+  const state = { statuses: {}, position: 0, speed: 1, sort: "freq", filters: [], textScale: 1 };
 
   // Начальная форма для каждой формы слова этой книги
   const lemmaOf = {};
@@ -590,8 +590,6 @@ window.startAudioEnglish = function (book, env) {
 
   let currentToken = -1;
   let currentSentence = 0;
-  let boundSentence = 0; // фраза, конец которой отслеживают повтор и стоп-после-фразы
-  let loopSentence = false;
   let follow = !textOnly;
   let selected = -1; // индекс слова в словаре
   let selectedToken = -1;
@@ -626,7 +624,7 @@ window.startAudioEnglish = function (book, env) {
 
   function save() {
     env.store.saveSettings({
-      speed: state.speed, stopAfter: state.stopAfter, sort: state.sort, filters: state.filters,
+      speed: state.speed, sort: state.sort, filters: state.filters,
       textScale: state.textScale, book: book.id,
     });
   }
@@ -658,7 +656,6 @@ window.startAudioEnglish = function (book, env) {
     return found;
   }
 
-  const sentenceAt = (t) => sentenceOfToken(Math.max(tokenAt(t), 0));
   const sentenceStart = (s) => times[starts[s]];
 
   /* ---------- Отрисовка текста ---------- */
@@ -738,12 +735,11 @@ window.startAudioEnglish = function (book, env) {
   // iPad иногда не принимает перемотку сразу после загрузки: повторяем её, пока не сработает
   let restoreAt = null;
 
-  function seekTo(t, keepBound) {
+  function seekTo(t) {
     restoreAt = null;
     if (textOnly) return;
     const max = isFinite(audio.duration) ? audio.duration : t;
     audio.currentTime = Math.min(Math.max(t, 0), max);
-    if (!keepBound) boundSentence = sentenceAt(audio.currentTime + SENTENCE_END_MARGIN);
     tick();
   }
 
@@ -755,7 +751,6 @@ window.startAudioEnglish = function (book, env) {
       return;
     }
     seekTo(sentenceStart(target));
-    boundSentence = target;
     setCurrent(starts[target]);
     if (!follow) setFollow(true);
     if (play) audio.play();
@@ -769,23 +764,6 @@ window.startAudioEnglish = function (book, env) {
   function tick() {
     const t = audio.currentTime;
     setCurrent(tokenAt(t));
-
-    if (!audio.paused && !seeking) {
-      const ahead = sentenceAt(t + SENTENCE_END_MARGIN);
-      if (ahead === boundSentence + 1) {
-        if (loopSentence) {
-          seekTo(sentenceStart(boundSentence), true);
-        } else if (state.stopAfter) {
-          audio.pause();
-          boundSentence = ahead;
-          seekTo(sentenceStart(ahead));
-        } else {
-          boundSentence = ahead;
-        }
-      } else if (ahead !== boundSentence) {
-        boundSentence = ahead;
-      }
-    }
 
     if (!seeking && isFinite(audio.duration) && audio.duration > 0) {
       $("seek").value = String(Math.round((t / audio.duration) * 1000));
@@ -831,19 +809,6 @@ window.startAudioEnglish = function (book, env) {
     let i = TEXT_SCALES.indexOf(state.textScale);
     if (i < 0) i = TEXT_SCALES.indexOf(1);
     setTextScale(TEXT_SCALES[Math.min(Math.max(i + dir, 0), TEXT_SCALES.length - 1)]);
-  }
-
-  function setLoop(on) {
-    loopSentence = on;
-    boundSentence = currentSentence;
-    $("loopBtn").setAttribute("aria-pressed", String(on));
-  }
-
-  function setStopAfter(on) {
-    state.stopAfter = on;
-    boundSentence = currentSentence;
-    $("stopBtn").setAttribute("aria-pressed", String(on));
-    save();
   }
 
   /* ---------- Статусы слов ---------- */
@@ -1133,7 +1098,6 @@ window.startAudioEnglish = function (book, env) {
     audio.addEventListener("play", () => {
       $("playBtn").textContent = "⏸";
       $("playBtn").setAttribute("aria-label", "Пауза");
-      boundSentence = sentenceAt(audio.currentTime + SENTENCE_END_MARGIN);
     });
     audio.addEventListener("pause", () => {
       $("playBtn").textContent = "▶";
@@ -1155,9 +1119,6 @@ window.startAudioEnglish = function (book, env) {
     $("nextBtn").addEventListener("click", () => goSentence(currentSentence + 1));
     $("back5Btn").addEventListener("click", () => seekTo(audio.currentTime - 5));
     $("fwd5Btn").addEventListener("click", () => seekTo(audio.currentTime + 5));
-    $("repeatBtn").addEventListener("click", () => goSentence(currentSentence, true));
-    $("loopBtn").addEventListener("click", () => setLoop(!loopSentence));
-    $("stopBtn").addEventListener("click", () => setStopAfter(!state.stopAfter));
     $("slowerBtn").addEventListener("click", () => stepSpeed(-1));
     $("fasterBtn").addEventListener("click", () => stepSpeed(1));
 
@@ -1309,9 +1270,6 @@ window.startAudioEnglish = function (book, env) {
         " ": togglePlay,
         ArrowLeft: () => (e.shiftKey ? seekTo(audio.currentTime - 5) : goSentence(currentSentence - 1)),
         ArrowRight: () => (e.shiftKey ? seekTo(audio.currentTime + 5) : goSentence(currentSentence + 1)),
-        r: () => goSentence(currentSentence, true),
-        l: () => setLoop(!loopSentence),
-        p: () => setStopAfter(!state.stopAfter),
         "[": () => stepSpeed(-1),
         "]": () => stepSpeed(1),
         "-": () => stepTextScale(-1),
@@ -1381,7 +1339,6 @@ window.startAudioEnglish = function (book, env) {
   renderList();
   bind();
   setSpeed(state.speed);
-  setStopAfter(state.stopAfter);
   setCurrent(0);
   setTextScale(state.textScale);
   sentenceEls[0].classList.add("cur");
@@ -1697,7 +1654,7 @@ window.startAudioEnglish = function (book, env) {
     button.textContent = "Обновить";
     button.title = "Готова новая версия приложения. Книги и статусы не пострадают.";
     button.addEventListener("click", () => location.reload());
-    const actions = document.querySelector(".top-actions");
+    const actions = document.getElementById("tools");
     actions.insertBefore(button, actions.firstChild);
   }
 
