@@ -206,9 +206,6 @@ button[aria-pressed="true"] {
   border-radius: 6px;
   background: var(--bg);
 }
-.list-tools.second { align-items: center; justify-content: space-between; font-size: 12px; }
-.list-tools.second button { padding: 3px 8px; font-size: 12px; white-space: nowrap; }
-.check { display: flex; align-items: center; gap: 5px; cursor: pointer; }
 
 .list {
   flex: 1;
@@ -417,10 +414,6 @@ button[aria-pressed="true"] {
         <option value="alpha">А–Я</option>
         <option value="first">По тексту</option>
       </select>
-    </div>
-    <div class="list-tools second">
-      <label class="check"><input id="onlySentence" type="checkbox"> Только текущее предложение</label>
-      <button id="markRest" type="button" title="Отметить «Знаю» слова текущего предложения, которые вы ещё не отмечали">Остальные → Знаю</button>
     </div>
     <ul id="list" class="list"></ul>
     <p id="empty" class="empty" hidden>Нет слов для этого фильтра</p>
@@ -715,7 +708,6 @@ window.startAudioEnglish = function (book, env) {
       sentenceEls[s].classList.add("cur");
       $("position").textContent = "Предложение " + (s + 1) + " из " + starts.length;
       if (follow && $("pop").hidden) scrollToCurrent();
-      if ($("onlySentence").checked) renderList();
     }
   }
 
@@ -870,22 +862,11 @@ window.startAudioEnglish = function (book, env) {
 
   /* ---------- Список слов ---------- */
 
-  function sentenceVocab(s) {
-    const end = s + 1 < starts.length ? starts[s + 1] : book.tokens.length;
-    const seen = new Set();
-    for (let i = starts[s]; i < end; i++) {
-      if (book.tokenVocab[i] >= 0) seen.add(book.tokenVocab[i]);
-    }
-    return seen;
-  }
-
   function visibleVocab() {
     const query = $("search").value.trim().toLowerCase();
-    const inSentence = $("onlySentence").checked ? sentenceVocab(currentSentence) : null;
     const out = [];
     book.vocab.forEach((word, v) => {
       if (state.filters.length && !state.filters.includes(statusOf(v))) return;
-      if (inSentence && !inSentence.has(v)) return;
       if (query && !book.forms[v].some((form) => form.includes(query)) && !word.includes(query)) return;
       out.push(v);
     });
@@ -1237,19 +1218,11 @@ window.startAudioEnglish = function (book, env) {
       renderList();
     });
     $("search").addEventListener("input", renderList);
-    $("onlySentence").addEventListener("change", renderList);
     $("sort").addEventListener("change", (e) => {
       state.sort = e.target.value;
       save();
       renderList();
     });
-    $("markRest").addEventListener("click", () => {
-      sentenceVocab(currentSentence).forEach((v) => {
-        if (!state.statuses[book.vocab[v]]) setStatus(v, KNOWN);
-      });
-      if (state.filters.length) renderList();
-    });
-
     $("bookSelect").addEventListener("change", (e) => env.selectBook(e.target.value));
     if (env.addBook) {
       $("addBookBtn").hidden = false;
