@@ -88,8 +88,6 @@ button[aria-pressed="true"] {
 }
 .top-actions { display: flex; align-items: center; gap: 8px; }
 .warning { color: var(--unknown); font-size: 12px; }
-.text-size { display: inline-flex; align-items: center; gap: 2px; }
-.text-size output { min-width: 44px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
 
 /* Раскладка */
 .layout {
@@ -153,7 +151,7 @@ button[aria-pressed="true"] {
   border-left: 1px solid var(--line);
   background: var(--panel);
 }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 10px; }
 .stat {
   display: flex;
   flex-direction: column;
@@ -177,18 +175,6 @@ button[aria-pressed="true"] {
 .stat.st-3 b { color: var(--unknown); }
 
 
-.progress {
-  display: flex;
-  height: 6px;
-  margin: 8px 0 10px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--line);
-}
-.progress i { display: block; height: 100%; }
-.p1 { background: var(--known); }
-.p2 { background: var(--medium); }
-.p3 { background: var(--unknown); }
 
 
 .list-tools { display: flex; gap: 6px; margin-bottom: 6px; }
@@ -277,17 +263,6 @@ button[aria-pressed="true"] {
 .status-buttons .st-3.is { background: var(--unknown-bg); border-color: var(--unknown); }
 .pop-play { width: 100%; margin-top: 6px; }
 
-/* Кнопка «Обновить» появляется, когда скачана новая версия приложения */
-/* «Обновить» есть всегда; подсвечена, когда новая версия уже скачана */
-.update-btn .upd-icon { display: inline-block; }
-.update-btn.ready { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
-.update-btn.ready:hover { background: var(--accent); filter: brightness(1.1); }
-.update-btn.checking .upd-icon { animation: upd-spin 1s linear infinite; }
-@keyframes upd-spin { to { transform: rotate(360deg); } }
-@media (max-width: 900px) {
-  .update-btn .upd-text { display: none; }
-}
-
 /* Книга без аудио: плеер не нужен, остаются только кнопки внизу */
 .text-only .player .seek, .text-only .player .main, .text-only .player .end { display: none; }
 .text-only .controls { margin-top: 0; }
@@ -308,44 +283,102 @@ button[aria-pressed="true"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 6px;
+  gap: 18px;
+  margin-top: 8px;
 }
 .controls > .group:first-child { flex: 1; }
 .controls button { white-space: nowrap; }
-/* Узкий iPad: процент размера текста прячем, чтобы всё встало в один ряд */
-@media (max-width: 900px) {
-  .text-size output { display: none; }
-  .text-size { gap: 4px; }
-  .controls { column-gap: 6px; }
-  .controls .group { gap: 4px; }
-  .speed output { min-width: 32px; }
-  .tools button { padding-left: 8px; padding-right: 8px; }
-}
 .group { display: flex; align-items: center; gap: 6px; }
 .tools { flex: 1; justify-content: flex-end; }
 .position { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.main button { min-width: 42px; height: 38px; }
-.main .play {
-  width: 52px;
-  height: 44px;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
-  font-size: 18px;
+.controls svg { display: block; width: 20px; height: 20px; }
+
+/* Кнопки плеера: круглые, без рамки; «Играть» — крупный акцентный круг */
+.main { gap: 4px; }
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 50%;
+  background: transparent;
 }
-.main .play:hover { background: var(--accent); filter: brightness(1.1); }
-.speed { display: inline-flex; align-items: center; gap: 2px; }
-.speed button { width: 28px; padding: 6px 0; }
-.speed output { min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; }
+.icon-btn:hover { background: var(--hover); }
+.main .play {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 6px;
+  padding: 0;
+  border-color: var(--accent);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 30%);
+}
+.main .play svg { width: 24px; height: 24px; }
+.main .play:hover { background: var(--accent); filter: brightness(1.08); }
+.play .i-pause, .play.playing .i-play { display: none; }
+.play.playing .i-pause { display: block; }
+
+/* Сегменты: скорость и размер текста */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.seg button {
+  height: 100%;
+  min-width: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 17px;
+}
+.seg button:hover { background: var(--hover); }
+.seg output {
+  min-width: 46px;
+  text-align: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.text-size .a-small { font-size: 12px; font-weight: 700; }
+.text-size .a-large { font-size: 18px; font-weight: 700; }
+
+/* Действия: значок и подпись, без заливки */
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: transparent;
+}
+.tool-btn svg { width: 18px; height: 18px; }
+.tool-btn.icon-only { width: 40px; padding: 0; justify-content: center; }
+
+/* Обновление: всегда на месте; акцентное, когда новая версия уже скачана */
+.update-btn .upd-icon { display: inline-grid; place-items: center; font-weight: 700; }
+.update-btn.ready { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.update-btn.ready:hover { background: var(--accent); filter: brightness(1.08); }
+.update-btn.checking .upd-icon { animation: upd-spin 1s linear infinite; }
+@keyframes upd-spin { to { transform: rotate(360deg); } }
 
 /* Сенсорный экран: кнопки крупнее */
 @media (pointer: coarse) {
   .dots button { width: 38px; height: 38px; font-size: 14px; }
   .status-buttons button { padding: 10px 2px; }
   .pop-play { padding: 10px; }
-  .speed button { width: 38px; padding: 8px 0; }
-  .text-size button { min-width: 42px; min-height: 38px; }
 }
 
 /* Выбор файлов книги на iPad */
@@ -371,9 +404,20 @@ button[aria-pressed="true"] {
 .library-error { color: var(--unknown); }
 
 @media (max-width: 1100px) {
-  .controls { gap: 8px; flex-wrap: wrap; }
+  .controls { gap: 10px; flex-wrap: wrap; }
   .controls > .group:first-child { display: none; }
   .tools { flex: 0 1 auto; }
+}
+
+/* Узкий iPad: процент размера текста и подписи кнопок убираем, чтобы всё встало в один ряд */
+@media (max-width: 900px) {
+  .controls { gap: 8px; }
+  .text-size output { display: none; }
+  .main { gap: 2px; }
+}
+@media (max-width: 1000px) {
+  .tool-btn span { display: none; }
+  .tool-btn { width: 40px; padding: 0; justify-content: center; }
 }
 
 @media (max-width: 820px) {
@@ -406,9 +450,6 @@ button[aria-pressed="true"] {
       <button type="button" class="stat st-2" data-filter="2" title="Показать слова «Средне»"><span class="num"><b id="n2"></b><small id="p2"></small></span><span>Средне</span></button>
       <button type="button" class="stat st-1" data-filter="1" title="Показать слова «Знаю»"><span class="num"><b id="n1"></b><small id="p1"></small></span><span>Знаю</span></button>
     </div>
-    <div class="progress" aria-hidden="true">
-      <i id="bar1" class="p1"></i><i id="bar2" class="p2"></i><i id="bar3" class="p3"></i>
-    </div>
 
 
     <div class="list-tools">
@@ -435,28 +476,28 @@ button[aria-pressed="true"] {
       <span id="position" class="position"></span>
     </div>
     <div class="group main">
-      <button id="prevBtn" type="button" title="Предыдущее предложение (←)" aria-label="Предыдущее предложение">⏮</button>
-      <button id="back5Btn" type="button" title="Назад 5 секунд (Shift+←)">−5с</button>
-      <button id="playBtn" class="play" type="button" title="Пауза / воспроизведение (Пробел)" aria-label="Воспроизведение">▶</button>
-      <button id="fwd5Btn" type="button" title="Вперёд 5 секунд (Shift+→)">+5с</button>
-      <button id="nextBtn" type="button" title="Следующее предложение (→)" aria-label="Следующее предложение">⏭</button>
+      <button id="prevBtn" class="icon-btn" type="button" title="Предыдущее предложение (←)" aria-label="Предыдущее предложение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 9.5 12l8.5 6z" fill="currentColor"/><path d="M6 6v12"/></svg></button>
+      <button id="back5Btn" class="icon-btn" type="button" title="Назад 5 секунд (Shift+←)" aria-label="Назад 5 секунд"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 3.5v5h5"/><text x="12" y="15.8" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none">5</text></svg></button>
+      <button id="playBtn" class="play" type="button" title="Пауза / воспроизведение (Пробел)" aria-label="Воспроизведение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-play" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="i-pause" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor" stroke="none"/><rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor" stroke="none"/></svg></button>
+      <button id="fwd5Btn" class="icon-btn" type="button" title="Вперёд 5 секунд (Shift+→)" aria-label="Вперёд 5 секунд"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/><path d="M20.5 3.5v5h-5"/><text x="12" y="15.8" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none">5</text></svg></button>
+      <button id="nextBtn" class="icon-btn" type="button" title="Следующее предложение (→)" aria-label="Следующее предложение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l8.5 6L6 18z" fill="currentColor"/><path d="M18 6v12"/></svg></button>
     </div>
     <div class="group end">
-      <span class="speed">
+      <span class="seg speed" role="group" aria-label="Скорость">
         <button id="slowerBtn" type="button" title="Медленнее ([)" aria-label="Медленнее">−</button>
         <output id="speed">1.0×</output>
         <button id="fasterBtn" type="button" title="Быстрее (])" aria-label="Быстрее">+</button>
       </span>
     </div>
     <div id="tools" class="group tools">
-      <span class="text-size" role="group" aria-label="Размер текста">
-        <button id="smallerTextBtn" type="button" title="Уменьшить текст (-)" aria-label="Уменьшить текст">A−</button>
+      <span class="seg text-size" role="group" aria-label="Размер текста">
+        <button id="smallerTextBtn" class="a-small" type="button" title="Уменьшить текст (-)" aria-label="Уменьшить текст">A</button>
         <output id="textSize">100%</output>
-        <button id="largerTextBtn" type="button" title="Увеличить текст (+)" aria-label="Увеличить текст">A+</button>
+        <button id="largerTextBtn" class="a-large" type="button" title="Увеличить текст (+)" aria-label="Увеличить текст">A</button>
       </span>
-      <button id="addBookBtn" type="button" title="Добавить книгу" aria-label="Добавить книгу" hidden>+ Книга</button>
-      <button id="exportBtn" type="button" title="Сохранить статусы слов в файл">Экспорт</button>
-      <button id="importBtn" type="button" title="Загрузить статусы слов из файла">Импорт</button>
+      <button id="addBookBtn" class="tool-btn" type="button" title="Добавить книгу" aria-label="Добавить книгу" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V6a2 2 0 0 1 2-2h12v13H7a2 2 0 0 0-2 2 2 2 0 0 0 2 2h12"/><path d="M12 7.5v6M9 10.5h6"/></svg><span>Книга</span></button>
+      <button id="exportBtn" class="tool-btn" type="button" title="Сохранить статусы слов в файл"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></svg><span>Экспорт</span></button>
+      <button id="importBtn" class="tool-btn" type="button" title="Загрузить статусы слов из файла"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M5 20h14"/></svg><span>Импорт</span></button>
       <input id="importFile" type="file" accept="application/json,.json" hidden>
     </div>
   </div>
@@ -843,9 +884,6 @@ window.startAudioEnglish = function (book, env) {
     $("n1").textContent = n[KNOWN];
     $("n2").textContent = n[MEDIUM];
     $("n3").textContent = n[UNKNOWN];
-    $("bar1").style.width = (n[KNOWN] / total) * 100 + "%";
-    $("bar2").style.width = (n[MEDIUM] / total) * 100 + "%";
-    $("bar3").style.width = (n[UNKNOWN] / total) * 100 + "%";
     const shares = percents([n[KNOWN], n[MEDIUM], n[UNKNOWN]], total);
     [KNOWN, MEDIUM, UNKNOWN].forEach((st, k) => {
       $("p" + st).textContent = n[st] && !shares[k] ? "<1%" : shares[k] + "%";
@@ -1094,11 +1132,11 @@ window.startAudioEnglish = function (book, env) {
       savePosition(false);
     });
     audio.addEventListener("play", () => {
-      $("playBtn").textContent = "⏸";
+      $("playBtn").classList.add("playing");
       $("playBtn").setAttribute("aria-label", "Пауза");
     });
     audio.addEventListener("pause", () => {
-      $("playBtn").textContent = "▶";
+      $("playBtn").classList.remove("playing");
       $("playBtn").setAttribute("aria-label", "Воспроизведение");
       if (restoreAt !== null) return;
       state.position = audio.currentTime;
@@ -1637,12 +1675,14 @@ window.startAudioEnglish = function (book, env) {
   // Кнопка «Обновить» видна всегда: если новая версия уже скачана в фоне, она подсвечена
   // и включает её сразу; если нет — сама проверяет обновление и включает его.
   // Книги, статусы и место в аудио обновление не трогает.
+  const REFRESH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/></svg>';
+
   function setupUpdates() {
     const button = document.createElement("button");
     button.id = "updateBtn";
     button.type = "button";
-    button.className = "update-btn";
-    button.innerHTML = '<span class="upd-icon" aria-hidden="true">⟳</span><span class="upd-text"> Обновить</span>';
+    button.className = "tool-btn icon-only update-btn";
+    button.innerHTML = '<span class="upd-icon" aria-hidden="true">' + REFRESH_ICON + "</span>";
     button.setAttribute("aria-label", "Обновить приложение");
     const tools = document.getElementById("tools");
     tools.insertBefore(button, tools.firstChild);
@@ -1663,7 +1703,7 @@ window.startAudioEnglish = function (book, env) {
       iconEl.textContent = icon;
       button.title = title;
       setTimeout(() => {
-        iconEl.textContent = "⟳";
+        iconEl.innerHTML = REFRESH_ICON;
         if (!ready) button.title = idleTitle;
       }, 2500);
     };
