@@ -162,6 +162,8 @@ button[aria-pressed="true"] {
   line-height: 1.2;
 }
 .stat b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.stat .num { display: flex; align-items: baseline; gap: 5px; }
+.stat small { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
 .stat span { font-size: 11px; color: var(--muted); }
 .stat.st-1 b { color: var(--known); }
 .stat.st-2 b { color: var(--medium); }
@@ -178,7 +180,7 @@ button[aria-pressed="true"] {
 .progress {
   display: flex;
   height: 6px;
-  margin-top: 8px;
+  margin: 8px 0 10px;
   overflow: hidden;
   border-radius: 3px;
   background: var(--line);
@@ -187,7 +189,7 @@ button[aria-pressed="true"] {
 .p1 { background: var(--known); }
 .p2 { background: var(--medium); }
 .p3 { background: var(--unknown); }
-.coverage { margin: 6px 0 10px; font-size: 12px; color: var(--muted); }
+
 
 .list-tools { display: flex; gap: 6px; margin-bottom: 6px; }
 .list-tools input[type="search"] {
@@ -392,14 +394,13 @@ button[aria-pressed="true"] {
   <aside class="words" aria-label="Слова">
     <div class="stats" id="stats" role="group" aria-label="Статистика">
       <div class="stat"><b id="nAll"></b><span>Всего</span></div>
-      <div class="stat st-3"><b id="n3"></b><span>Не знаю</span></div>
-      <div class="stat st-2"><b id="n2"></b><span>Средне</span></div>
-      <div class="stat st-1"><b id="n1"></b><span>Знаю</span></div>
+      <div class="stat st-3"><div class="num"><b id="n3"></b><small id="p3"></small></div><span>Не знаю</span></div>
+      <div class="stat st-2"><div class="num"><b id="n2"></b><small id="p2"></small></div><span>Средне</span></div>
+      <div class="stat st-1"><div class="num"><b id="n1"></b><small id="p1"></small></div><span>Знаю</span></div>
     </div>
     <div class="progress" aria-hidden="true">
       <i id="bar1" class="p1"></i><i id="bar2" class="p2"></i><i id="bar3" class="p3"></i>
     </div>
-    <p id="coverage" class="coverage"></p>
 
     <div class="chips" id="filters" role="group" aria-label="Какие статусы показать">
       <span class="chips-label">Показать:</span>
@@ -591,7 +592,6 @@ window.startAudioEnglish = function (book, env) {
     vocabCount[v]++;
     if (vocabFirst[v] < 0) vocabFirst[v] = i;
   });
-  const tokenCountTotal = vocabCount.reduce((a, b) => a + b, 0);
   const tokenSpans = new Array(book.tokens.length);
   const sentenceEls = new Array(starts.length);
 
@@ -841,13 +841,7 @@ window.startAudioEnglish = function (book, env) {
 
   function renderStats() {
     const n = [0, 0, 0, 0];
-    let knownTokens = 0, mediumTokens = 0;
-    book.vocab.forEach((_, v) => {
-      const st = statusOf(v);
-      n[st]++;
-      if (st === KNOWN) knownTokens += vocabCount[v];
-      if (st === MEDIUM) mediumTokens += vocabCount[v];
-    });
+    book.vocab.forEach((_, v) => { n[statusOf(v)]++; });
     const total = book.vocab.length;
     $("nAll").textContent = total;
     $("n1").textContent = n[KNOWN];
@@ -856,10 +850,22 @@ window.startAudioEnglish = function (book, env) {
     $("bar1").style.width = (n[KNOWN] / total) * 100 + "%";
     $("bar2").style.width = (n[MEDIUM] / total) * 100 + "%";
     $("bar3").style.width = (n[UNKNOWN] / total) * 100 + "%";
-    const known = (knownTokens / tokenCountTotal) * 100;
-    const medium = (mediumTokens / tokenCountTotal) * 100;
-    $("coverage").textContent =
-      "В тексте книги: знаю " + known.toFixed(1) + "% слов, средне " + medium.toFixed(1) + "%";
+    const shares = percents([n[KNOWN], n[MEDIUM], n[UNKNOWN]], total);
+    [KNOWN, MEDIUM, UNKNOWN].forEach((st, k) => {
+      $("p" + st).textContent = n[st] && !shares[k] ? "<1%" : shares[k] + "%";
+    });
+  }
+
+  // Целые проценты, которые в сумме дают ровно 100: лишние единицы получают доли с большим остатком
+  function percents(parts, total) {
+    if (!total) return parts.map(() => 0);
+    const exact = parts.map((p) => (p / total) * 100);
+    const out = exact.map(Math.floor);
+    let left = 100 - out.reduce((x, y) => x + y, 0);
+    exact.map((e, k) => [e - out[k], k]).sort((x, y) => y[0] - x[0]).forEach(([, k]) => {
+      if (left > 0) { out[k]++; left--; }
+    });
+    return out;
   }
 
   /* ---------- Список слов ---------- */
