@@ -917,9 +917,33 @@ window.startAudioEnglish = function (book, env) {
 
   function setFollow(on) {
     if (textOnly) on = false;
+    clearTimeout(resumeTimer);
     follow = on;
     $("followBtn").hidden = on;
     if (on) scrollToCurrent(true);
+  }
+
+  // Текст всегда держится рядом со звучащим предложением. Если прокрутить его рукой
+  // (или открыть слово из списка), во время воспроизведения он вернётся сам через
+  // несколько секунд; на паузе остаётся там, куда его прокрутили.
+  const FOLLOW_RESUME_MS = 3000;
+  let resumeTimer = null;
+
+  function pauseFollow() {
+    if (textOnly) return;
+    follow = false;
+    $("followBtn").hidden = false;
+    clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(resumeFollow, FOLLOW_RESUME_MS);
+  }
+
+  function resumeFollow() {
+    if (audio.paused) return;
+    if (!$("pop").hidden) {
+      resumeTimer = setTimeout(resumeFollow, FOLLOW_RESUME_MS); // ждём, пока закроют карточку слова
+      return;
+    }
+    setFollow(true);
   }
 
   /* ---------- Плеер ---------- */
@@ -1161,6 +1185,8 @@ window.startAudioEnglish = function (book, env) {
     selected = -1;
     selectedToken = -1;
     $("pop").hidden = true;
+    // Пока была открыта карточка, текст не прокручивался: догоняем звук
+    if (follow && !audio.paused) requestAnimationFrame(() => { if ($("pop").hidden) scrollToCurrent(); });
   }
 
   function paintPop() {
@@ -1319,6 +1345,7 @@ window.startAudioEnglish = function (book, env) {
       savePosition(false);
     });
     audio.addEventListener("play", () => {
+      if (!follow) setFollow(true); // запуск звука всегда возвращает текст к нему
       $("playBtn").classList.add("playing");
       $("playBtn").setAttribute("aria-label", "Пауза");
     });
@@ -1386,7 +1413,7 @@ window.startAudioEnglish = function (book, env) {
     // Автопрокрутку отключает только прокрутка самим пользователем
     const onManualScroll = () => {
       clearSelection();
-      if (follow) setFollow(false);
+      pauseFollow();
     };
     $("text").addEventListener("wheel", onManualScroll, { passive: true });
     $("text").addEventListener("touchmove", onManualScroll, { passive: true });
@@ -1422,8 +1449,7 @@ window.startAudioEnglish = function (book, env) {
       }
       if (e.target.closest(".row-word")) {
         const token = nextOccurrence(v);
-        follow = false;
-        $("followBtn").hidden = false;
+        pauseFollow();
         tokenSpans[token].scrollIntoView({ block: "center" });
         openPop(v, token);
         setTimeout(() => {
