@@ -923,6 +923,7 @@ window.startAudioEnglish = function (book, env) {
       currentSentence = s;
       sentenceEls[s].classList.add("cur");
       $("position").textContent = "Предложение " + (s + 1) + " из " + starts.length;
+      showSentenceWord(s);
       if (follow) scrollToCurrent();
     }
   }
@@ -1231,9 +1232,28 @@ window.startAudioEnglish = function (book, env) {
   const translationOf = (v) => (isPhrase(v) ? phraseTr[book.vocab[v]] : window.DICTIONARY[book.vocab[v]]) || "";
 
   // Выбранное слово или сочетание — в левой панели: перевод, перевод предложения, статус
-  function openPop(v, token) {
+  // Новое звучащее предложение: левая панель показывает его перевод и первое незнакомое
+  // (цветное: «Не знаю» или «Средне») слово, а если все знакомы — первое слово предложения.
+  // Нажатое слово потом заменяет выбор, пока не зазвучит следующее предложение.
+  function showSentenceWord(s) {
+    const end = s + 1 < starts.length ? starts[s + 1] : book.tokens.length;
+    let first = -1, colored = -1;
+    for (let i = starts[s]; i < end; i++) {
+      const phrase = phraseAt.get(i);
+      const v = phrase ? phrase[0] : book.tokenVocab[i];
+      if (v < 0) continue;
+      if (first < 0) first = i;
+      if (statusOf(v) !== KNOWN) { colored = i; break; }
+    }
+    const token = colored >= 0 ? colored : first;
+    if (token < 0) return;
+    const phrase = phraseAt.get(token);
+    openPop(phrase ? phrase[0] : book.tokenVocab[token], token, true);
+  }
+
+  function openPop(v, token, auto) {
     selectWord(v, token);
-    if (state.hideDetails) setHideDetails(false); // нажали на слово — значит, панель нужна
+    if (!auto && state.hideDetails) setHideDetails(false); // нажали на слово — значит, панель нужна
     $("dWord").textContent = book.vocab[v];
     $("dCount").textContent = "×" + vocabCount[v];
     $("dForms").textContent = otherForms(v, isPhrase(v) ? "" : "формы: ");
