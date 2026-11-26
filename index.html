@@ -142,6 +142,15 @@ button[aria-pressed="true"] {
   content-visibility: auto;
   contain-intrinsic-size: auto 10em;
 }
+/* Заголовок главы — своей строкой, с отступом от текста */
+.text h2.chapter {
+  max-width: 44em;
+  margin: 1.6em auto 0.7em;
+  font-size: 1.15em;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.text h2.chapter:first-child { margin-top: 0; }
 .sent {
   padding: 3px 0;
   border-radius: 4px;
@@ -875,17 +884,41 @@ window.startAudioEnglish = function (book, env) {
 
   /* ---------- Отрисовка текста ---------- */
 
+  // Предложения-заголовки глав: «Chapter 1.» (или «Chapter nine.») и следующее за ним короткое название
+  function chapterHeadings() {
+    const found = new Map();
+    const length = (s) => (s + 1 < starts.length ? starts[s + 1] : book.tokens.length) - starts[s];
+    starts.forEach((start, s) => {
+      if (!/^chapter$/i.test(book.tokens[start]) || length(s) > 3) return;
+      found.set(s, "start");
+      if (s + 1 < starts.length && length(s + 1) <= 16) found.set(s + 1, "title");
+    });
+    return found;
+  }
+
   function renderText() {
     const root = $("text");
     const frag = document.createDocumentFragment();
     const paragraphStarts = book.paragraphStarts ? new Set(book.paragraphStarts) : null;
+    const headings = chapterHeadings();
     let paragraph = null;
+    let inParagraph = 0; // предложений в текущем абзаце
     starts.forEach((start, s) => {
-      if (!paragraph || (paragraphStarts ? paragraphStarts.has(s) : s % book.sentencesPerParagraph === 0)) {
+      const end = s + 1 < starts.length ? starts[s + 1] : book.tokens.length;
+      const heading = headings.get(s);
+      if (heading === "start") {
+        // Заголовок главы — отдельной строкой: «Chapter 1.» и название
+        paragraph = document.createElement("h2");
+        paragraph.className = "chapter";
+        frag.appendChild(paragraph);
+        inParagraph = 0;
+      } else if (heading !== "title" && (!paragraph || paragraph.tagName === "H2" ||
+          (paragraphStarts ? paragraphStarts.has(s) : inParagraph >= book.sentencesPerParagraph))) {
         paragraph = document.createElement("p");
         frag.appendChild(paragraph);
+        inParagraph = 0;
       }
-      const end = s + 1 < starts.length ? starts[s + 1] : book.tokens.length;
+      if (!heading) inParagraph++;
       const sentence = document.createElement("span");
       sentence.className = "sent";
       sentence.dataset.s = s;
