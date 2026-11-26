@@ -589,7 +589,7 @@ button[aria-pressed="true"] {
 
 
 <audio id="audio" preload="auto"></audio>
-<script src="data.c8702493a0.js"></script>
+<script src="data.f062ea7b5f.js"></script>
 <script>
 // Хранение в браузере: статусы слов общие для всех книг, позиция у каждой книги своя
 window.createLocalStore = function () {
@@ -921,6 +921,11 @@ window.startAudioEnglish = function (book, env) {
       sentence.className = "sent";
       sentence.dataset.s = s;
       for (let i = start; i < end; i++) {
+        if (book.tokens[i] === "") {
+          // Склеенное слово: пустой токен не выводим, но место в списке токенов оставляем
+          tokenSpans[i] = document.createElement("span");
+          continue;
+        }
         const span = document.createElement("span");
         span.textContent = book.tokens[i];
         span.dataset.i = i;
@@ -943,6 +948,9 @@ window.startAudioEnglish = function (book, env) {
   }
 
   function setCurrent(token) {
+    // Пустой токен — вторая половина слова, склеенного при исправлении текста («micro seconds» →
+    // «microseconds»): пока он звучит, подсвечено само слово
+    while (token > 0 && book.tokens[token] === "") token--;
     if (token === currentToken) return;
     if (currentToken >= 0) tokenSpans[currentToken].classList.remove("on");
     currentToken = token;
