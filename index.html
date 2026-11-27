@@ -118,6 +118,9 @@ button[aria-pressed="true"] {
 .d-head { color: var(--muted); font-size: 13px; }
 .d-head b { color: var(--ink); font-size: 22px; font-weight: 700; }
 .d-forms { margin-top: 2px; color: var(--muted); font-size: 12px; }
+/* Состав слова: английские части жирным, их перевод приглушённым */
+.d-roots { margin: -4px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.d-roots b { color: var(--ink); font-weight: 600; }
 .d-translation { margin: 10px 0 12px; font-size: 17px; line-height: 1.35; color: var(--ink); }
 .d-sentence { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--bg); font-size: 15px; line-height: 1.45; }
 .d-sentence:empty { display: none; }
@@ -512,6 +515,8 @@ button[aria-pressed="true"] {
       <div class="d-head"><b id="dWord"></b> <span id="dCount"></span></div>
       <div id="dForms" class="d-forms"></div>
       <p id="dTranslation" class="d-translation"></p>
+      <!-- Из каких английских слов составлено: dis- (лишить) + courage (смелость) -->
+      <p id="dRoots" class="d-roots" hidden></p>
       <div id="dLinks" class="pop-links" hidden></div>
       <p id="dSentence" class="d-sentence"></p>
       <!-- Один переключатель статуса: Не знаю → Средне → Знаю → Не знаю -->
@@ -589,7 +594,7 @@ button[aria-pressed="true"] {
 
 
 <audio id="audio" preload="auto"></audio>
-<script src="data.f062ea7b5f.js"></script>
+<script src="data.7bc61615d5.js"></script>
 <script>
 // Хранение в браузере: статусы слов общие для всех книг, позиция у каждой книги своя
 window.createLocalStore = function () {
@@ -1301,6 +1306,22 @@ window.startAudioEnglish = function (book, env) {
     openPop(phrase ? phrase[0] : book.tokenVocab[token], token, true);
   }
 
+  // Состав слова из английских частей: «dis- лишить + courage смелость»
+  function fillRoots(v) {
+    const parts = !isPhrase(v) && window.WORD_ROOTS ? window.WORD_ROOTS[book.vocab[v]] : null;
+    const box = $("dRoots");
+    box.hidden = !parts;
+    if (!parts) return;
+    const nodes = [];
+    parts.forEach(([en, ru], k) => {
+      if (k) nodes.push(document.createTextNode(" + "));
+      const b = document.createElement("b");
+      b.textContent = en;
+      nodes.push(b, document.createTextNode(ru ? " " + ru : ""));
+    });
+    box.replaceChildren(...nodes);
+  }
+
   function openPop(v, token, auto) {
     selectWord(v, token);
     if (!auto && state.hideDetails) setHideDetails(false); // нажали на слово — значит, панель нужна
@@ -1308,6 +1329,7 @@ window.startAudioEnglish = function (book, env) {
     $("dCount").textContent = "×" + vocabCount[v];
     $("dForms").textContent = otherForms(v, isPhrase(v) ? "" : "формы: ");
     $("dTranslation").textContent = translationOf(v) || "Перевода пока нет";
+    fillRoots(v);
     fillPopLinks(v);
     const sentence = sentenceTr ? sentenceTr[sentenceOfToken(selectedToken)] || "" : "";
     $("dSentence").replaceChildren(...markRanges(sentence, alignedRanges(sentence, v) || stemRanges(sentence, translationOf(v))));
