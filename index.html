@@ -1466,9 +1466,13 @@ window.startAudioEnglish = function (book, env) {
     env.saveFile("статусы слов.json", JSON.stringify(backup, null, 1));
   }
 
-  function showNotice(text) {
+  // Сообщение сверху исчезает само через несколько секунд (или по нажатию)
+  let noticeTimer = null;
+  function showNotice(text, ms = 4000) {
+    clearTimeout(noticeTimer);
     $("saveWarning").textContent = text;
     $("saveWarning").hidden = !text;
+    if (text) noticeTimer = setTimeout(() => showNotice(""), ms);
   }
 
   // Статусы изменились извне (импорт или другое устройство)
@@ -1513,7 +1517,7 @@ window.startAudioEnglish = function (book, env) {
         renderList();
         showNotice("Статусы загружены из файла: " + Object.keys(clean).length);
       } catch (e) {
-        showNotice("Не удалось прочитать файл со статусами");
+        showNotice("Не удалось прочитать файл со статусами", 8000);
       }
     };
     reader.readAsText(file);
@@ -1532,7 +1536,7 @@ window.startAudioEnglish = function (book, env) {
     });
     audio.addEventListener("error", () => {
       if (env.onAudioError && env.onAudioError()) return;
-      showNotice("Браузер не смог открыть аудиофайл. Статусы при этом не пострадали.");
+      showNotice("Браузер не смог открыть аудиофайл. Статусы при этом не пострадали.", 8000);
     });
     audio.addEventListener("timeupdate", () => {
       if (restoreAt !== null) {
