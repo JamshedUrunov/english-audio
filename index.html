@@ -720,6 +720,7 @@ window.startAudioEnglish = function (book, env) {
   const wordCount = book.vocab.length;
   const PHRASE_GAP = 2; // сколько слов может стоять внутри фразового глагола: figure it out
   const phraseTr = {};
+  const phraseLemmas = {}; // сочетание → начальные формы его слов (для разбора по словам)
   const occurrences = []; // для каждого сочетания — список вхождений (массивы номеров токенов)
   const phraseAt = new Map(); // токен → [номер в словаре, вхождение]
 
@@ -753,6 +754,7 @@ window.startAudioEnglish = function (book, env) {
           occurrences.push([]);
           forms.push(new Set());
           phraseTr[p.key] = p.t;
+          phraseLemmas[p.key] = p.lemmas;
         }
         const v = index.get(p.key);
         const occurrence = hit;
@@ -1307,9 +1309,19 @@ window.startAudioEnglish = function (book, env) {
     openPop(phrase ? phrase[0] : book.tokenVocab[token], token, true);
   }
 
-  // Состав слова из английских частей, по части на строку: «dis- лишить», «courage смелость»
+  // Состав из английских частей, по части на строку: у слова — «dis- лишить», «courage смелость»,
+  // у сочетания — каждое его слово с переводом из словаря
+  function phraseParts(v) {
+    const words = book.vocab[v].split(" ");
+    const lemmas = phraseLemmas[book.vocab[v]] || [];
+    return words.map((w, k) => {
+      const tr = window.DICTIONARY[lemmas.length === words.length ? lemmas[k] : w] || window.DICTIONARY[w] || "";
+      return [w, tr];
+    });
+  }
+
   function fillRoots(v) {
-    const parts = !isPhrase(v) && window.WORD_ROOTS ? window.WORD_ROOTS[book.vocab[v]] : null;
+    const parts = isPhrase(v) ? phraseParts(v) : window.WORD_ROOTS ? window.WORD_ROOTS[book.vocab[v]] : null;
     const box = $("dRoots");
     box.hidden = !parts;
     if (!parts) return;
