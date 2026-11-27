@@ -118,9 +118,10 @@ button[aria-pressed="true"] {
 .d-head { color: var(--muted); font-size: 13px; }
 .d-head b { color: var(--ink); font-size: 22px; font-weight: 700; }
 .d-forms { margin-top: 2px; color: var(--muted); font-size: 12px; }
-/* Состав слова: английские части жирным, их перевод приглушённым */
-.d-roots { margin: -4px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
-.d-roots b { color: var(--ink); font-weight: 600; }
+/* Состав слова: части в столбик, английские жирным и синеватым, перевод приглушённым */
+.d-roots { margin: -4px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.d-roots span { display: block; }
+.d-roots b { color: var(--accent); font-weight: 700; }
 .d-translation { margin: 10px 0 12px; font-size: 17px; line-height: 1.35; color: var(--ink); }
 .d-sentence { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--bg); font-size: 15px; line-height: 1.45; }
 .d-sentence:empty { display: none; }
@@ -515,7 +516,7 @@ button[aria-pressed="true"] {
       <div class="d-head"><b id="dWord"></b> <span id="dCount"></span></div>
       <div id="dForms" class="d-forms"></div>
       <p id="dTranslation" class="d-translation"></p>
-      <!-- Из каких английских слов составлено: dis- (лишить) + courage (смелость) -->
+      <!-- Из каких английских слов составлено, по части на строку: dis- лишить / courage смелость -->
       <p id="dRoots" class="d-roots" hidden></p>
       <div id="dLinks" class="pop-links" hidden></div>
       <p id="dSentence" class="d-sentence"></p>
@@ -1306,20 +1307,19 @@ window.startAudioEnglish = function (book, env) {
     openPop(phrase ? phrase[0] : book.tokenVocab[token], token, true);
   }
 
-  // Состав слова из английских частей: «dis- лишить + courage смелость»
+  // Состав слова из английских частей, по части на строку: «dis- лишить», «courage смелость»
   function fillRoots(v) {
     const parts = !isPhrase(v) && window.WORD_ROOTS ? window.WORD_ROOTS[book.vocab[v]] : null;
     const box = $("dRoots");
     box.hidden = !parts;
     if (!parts) return;
-    const nodes = [];
-    parts.forEach(([en, ru], k) => {
-      if (k) nodes.push(document.createTextNode(" + "));
+    box.replaceChildren(...parts.map(([en, ru]) => {
+      const line = document.createElement("span");
       const b = document.createElement("b");
       b.textContent = en;
-      nodes.push(b, document.createTextNode(ru ? " " + ru : ""));
-    });
-    box.replaceChildren(...nodes);
+      line.append(b, ru ? " " + ru : "");
+      return line;
+    }));
   }
 
   function openPop(v, token, auto) {
